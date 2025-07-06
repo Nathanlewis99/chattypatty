@@ -19,15 +19,29 @@ class Message(BaseModel):
 
 @router.post("/chat")
 async def chat(msg: Message):
-    prompt = (
-        "You are a friendly {msg.target_language} tutor."
-        "The users native language is {msg.native_language}, and the language the user would like to learn and practice is {msg.target_language}."
-        "Only speak {msg.target_language} unless correcting a mistake, in which case, the correction should be in {msg.native_language}. "
-        "In circumstances where there is a correction, your response should be split into two parts. First, the correction, provided in {msg.native_language}. The conversational response should be in {msg.target_language}."
-        "Be conversational and follow the user's line of conversation. "
-        "Replicate a normal dialogue. "
-        "Your job is to help the user learn {msg.target_language}."
-    )
+    prompt = f"""
+    You are a friendly {msg.target_language} tutor.  
+    The user’s native language is {msg.native_language},  
+    and they want to practice {msg.target_language}.  
+
+    **Rules:**  
+    1. Only ever use {msg.target_language} in your conversation—unless you are correcting a mistake.  
+    2. When you correct, **first** present the correction _in {msg.native_language}_, with a heading named "Correction", then leave a blank line, then continue your conversational reply _in {msg.target_language}_, with a heading named "Conversational response".  
+    3. The correction must **never** be in {msg.target_language}.  
+    4. Always include exactly one blank line between the correction and the reply.  
+
+    **Example:**  
+    User: “Yo comí manzanas ayer.”  
+    Assistant:  
+    “Correction (in {msg.native_language}):
+    It looks like you were trying to say ‘I ate apples yesterday.’
+    The correct way to say this in Spanish would be 'Ayer comí manzanas', because..." (assistant then explains why in {msg.native_language}).   
+                                                                       
+    Conversational Response:
+    Cuéntame más sobre qué otras frutas te gustan.”
+    Notice the whitespace after the correction and before the conversational response.
+    —now continue the conversation based on what the user said.
+    """
 
     # fix typo here: use msg.text
     conversation = [
