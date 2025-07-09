@@ -1,12 +1,47 @@
 services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB:   postgres
+      POSTGRES_USER: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+
   backend:
-    build: ./backend
-    env_file: ./backend/.env
+    build: 
+      context: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:@db:5432/postgres
+    volumes:
+      - ./backend:/app
+      - backend_data:/app/data
     ports:
       - "8001:8000"
+
   frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
+    build:
+      context: ./frontend
     depends_on:
       - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  db_data:
+  backend_data:
