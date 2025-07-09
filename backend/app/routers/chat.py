@@ -1,14 +1,17 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
+from fastapi.responses import StreamingResponse
+from ..users import fastapi_users, UserRead
 
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 router = APIRouter()
+
 
 class Message(BaseModel):
     text: str
@@ -18,7 +21,7 @@ class Message(BaseModel):
 
 
 @router.post("/chat")
-async def chat(msg: Message):
+async def chat(msg: Message, user: UserRead = Depends(fastapi_users.current_user())):
     prompt = f"""
     You are a friendly {msg.target_language} tutor.  
     The user’s native language is {msg.native_language},  
@@ -43,16 +46,21 @@ async def chat(msg: Message):
     —now continue the conversation based on what the user said.
     """
 
-    # fix typo here: use msg.text
     conversation = [
         {"role": "system", "content": prompt},
         {"role": "user",   "content": msg.text}
     ]
 
-    response = client.chat.completions.create(
-        model="gpt-4.1",
-        messages=conversation,
-        # stream=True   --- turn this on, will need additional configuration to process chunks at real time.
-    )
-    return {"reply": response.choices[0].message.content}
+    def generate():
+        stream = client.chat.completions.create(
+            model="gpt-4.1",
+            messages=conversation,
+            stream=True
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield delta
+    
+    return StreamingResponse(generate(), media_type="text/plain")
 
