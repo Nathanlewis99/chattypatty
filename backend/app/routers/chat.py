@@ -4,14 +4,15 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 from fastapi.responses import StreamingResponse
-from ..users import fastapi_users, UserRead
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..users import fastapi_users, UserRead
+from .conversations import get_db  # ← your new dependency
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 router = APIRouter()
-
 
 class Message(BaseModel):
     text: str
@@ -19,9 +20,12 @@ class Message(BaseModel):
     native_language: str
     target_language: str
 
-
 @router.post("/chat")
-async def chat(msg: Message, user: UserRead = Depends(fastapi_users.current_user())):
+async def chat(
+    msg: Message,
+    user: UserRead = Depends(fastapi_users.current_user()),
+    db: AsyncSession = Depends(get_db),      # ← new DB session
+):
     prompt = f"""
     You are a friendly {msg.target_language} tutor.  
     The user’s native language is {msg.native_language},  
@@ -61,6 +65,5 @@ async def chat(msg: Message, user: UserRead = Depends(fastapi_users.current_user
             delta = chunk.choices[0].delta.content
             if delta:
                 yield delta
-    
-    return StreamingResponse(generate(), media_type="text/plain")
 
+    return StreamingResponse(generate(), media_type="text/plain")

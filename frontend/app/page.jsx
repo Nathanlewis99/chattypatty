@@ -1,158 +1,90 @@
 // frontend/app/page.jsx
 "use client";
+export const dynamic    = "force-dynamic";
+export const fetchCache = "force-no-store";
 
-import { useState, useEffect, useContext } from 'react';
-import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import { useContext, useEffect } from "react";
+import { useRouter }            from "next/navigation";
 
-import { AuthContext } from './auth/AuthContext';
-import LanguageSelector from './components/LanguageSelector';
-import ChatWindow       from './components/ChatWindow';
-import ChatInput        from './components/ChatInput';
+import { AuthContext }          from "./auth/AuthContext";
+import { useConversations }     from "./ConversationContext";
+
+import Sidebar          from "./components/Sidebar";
+import LanguageSelector from "./components/LanguageSelector";
+import ChatWindow       from "./components/ChatWindow";
+import ChatInput        from "./components/ChatInput";
 
 export default function Page() {
   const { token } = useContext(AuthContext);
   const router    = useRouter();
-  const BACKEND   = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  const [languages,  setLanguages]  = useState([]);
-  const [nativeLang, setNativeLang] = useState('en');
-  const [targetLang, setTargetLang] = useState('es');
-  const [chat,        setChat]      = useState([]);
+  // grab everything from our ConversationProvider
+  const {
+    conversations,
+    activeId,
+    nativeLanguage,
+    targetLanguage,
+    messages,
+    languages,
+    selectConversation,
+    newConversation,
+    deleteConversation,
+    sendMessage,
+    setNativeLanguage,
+    setTargetLanguage,
+  } = useConversations();
 
-  // Redirect to /login if not authenticated
+  // redirect if not authed
   useEffect(() => {
-    if (!token) {
-      router.replace('/login');
-    }
+    if (!token) router.replace("/login");
   }, [token, router]);
 
-  // Fetch Google Translate language list once the user is authenticated
-  useEffect(() => {
-    if (!token) return;
-    axios.get(`${BACKEND}/languages?target=en`)
-      .then(({ data }) => {
-        setLanguages(
-          data.map(({ language, name }) => ({
-            value: language,
-            label: name
-          }))
-        );
-      })
-      .catch(err => console.error("Failed to fetch languages:", err));
-  }, [BACKEND, token]);
-
-  // Send a message and stream the assistant's reply
-  const handleSend = async (text) => {
-    // Append the user's message
-    setChat(prev => [...prev, { from: 'user', text }]);
-    // Append a placeholder for the streaming bot response
-    setChat(prev => [...prev, { from: 'bot', text: '', streaming: true }]);
-
-    try {
-      const response = await fetch(`${BACKEND}/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          text,
-          native_language:  nativeLang,
-          target_language: targetLang
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Network error: ${response.statusText}`);
-      }
-
-      const reader  = response.body.getReader();
-      const decoder = new TextDecoder();
-      let done      = false;
-
-      // Read and append streaming chunks
-      while (!done) {
-        const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-        if (value) {
-          const chunk = decoder.decode(value);
-          setChat(prev => {
-            const updated = [...prev];
-            const last = updated[updated.length - 1];
-            if (last.from === 'bot' && last.streaming) {
-              last.text += chunk;
-            }
-            return updated;
-          });
-        }
-      }
-
-      // Turn off the streaming flag
-      setChat(prev => {
-        const updated = [...prev];
-        const last = updated[updated.length - 1];
-        if (last.from === 'bot' && last.streaming) {
-          last.streaming = false;
-        }
-        return updated;
-      });
-
-    } catch (err) {
-      console.error("Chat streaming error:", err);
-      // Replace the streaming placeholder with an error message
-      setChat(prev => {
-        const updated = [...prev];
-        const last = updated[updated.length - 1];
-        if (last.from === 'bot' && last.streaming) {
-          last.text = "Sorry, something went wrong.";
-          last.streaming = false;
-        }
-        return updated;
-      });
-    }
-  };
-
   return (
-    <>
-      {/* Container */}
-      <div className="flex flex-col min-h-screen max-w-3xl mx-auto px-6 pt-6 pb-32">
-        
-        {/* Language selectors */}
-        <div className="flex justify-between mb-6">
-          <div className="w-80">
-            <LanguageSelector
-              label="Native language"
-              options={languages}
-              value={nativeLang}
-              onChange={setNativeLang}
-            />
+    <div className="flex h-full min-h-screen bg-black text-white">
+      {/* Sidebar */}
+      <aside className="w-64 border-r border-gray-700 bg-gray-800">
+        <Sidebar />
+      </aside>
+
+      {/* Main chat */}
+      <main className="flex-1 flex flex-col">
+        <div className="p-6 flex-1 flex flex-col">
+          {/* Language selectors */}
+          <div className="flex justify-between mb-6">
+            <div className="w-80">
+              <LanguageSelector
+                label="Native language"
+                options={languages}
+                value={nativeLanguage}
+                onChange={setNativeLanguage}
+                disabled={messages.length > 0}
+              />
+            </div>
+            <div className="w-80">
+              <LanguageSelector
+                label="Practice language"
+                options={languages}
+                value={targetLanguage}
+                onChange={setTargetLanguage}
+                disabled={messages.length > 0}
+              />
+            </div>
           </div>
-          <div className="w-80">
-            <LanguageSelector
-              label="Practice language"
-              options={languages}
-              value={targetLang}
-              onChange={setTargetLang}
-            />
+
+          {/* Chat history */}
+          <div className="flex-1 overflow-y-auto">
+            <ChatWindow messages={messages} />
           </div>
         </div>
 
-        {/* Chat window */}
-        <div className="flex-1">
-          <ChatWindow messages={chat} />
-        </div>
-      </div>
-
-      {/* Fixed ChatInput at bottom */}
-      <div className="fixed bottom-4 inset-x-0 flex justify-center">
-        <div className="w-full max-w-3xl px-6">
+        {/* Input at bottom */}
+        <div className="border-t p-4 bg-gray-900">
           <ChatInput
-            onSend={handleSend}
-            placeholder={`Type in ${targetLang}…`}
+            onSend={sendMessage}
+            placeholder={`Type in ${targetLanguage}…`}
           />
         </div>
-      </div>
-    </>
+      </main>
+    </div>
   );
 }
