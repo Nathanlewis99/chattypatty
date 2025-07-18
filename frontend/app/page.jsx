@@ -4,81 +4,58 @@ export const dynamic    = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 import { useContext, useEffect } from "react";
-import { useRouter }            from "next/navigation";
+import { useRouter }             from "next/navigation";
 
-import { AuthContext }          from "./auth/AuthContext";
-import { useConversations }     from "./ConversationContext";
+import { AuthContext }      from "./auth/AuthContext";
+import { useConversations } from "./ConversationContext";
 
-import Sidebar          from "./components/Sidebar";
-import LanguageSelector from "./components/LanguageSelector";
-import ChatWindow       from "./components/ChatWindow";
-import ChatInput        from "./components/ChatInput";
+import Header     from "./components/Header";
+import Sidebar    from "./components/Sidebar";
+import ChatWindow from "./components/ChatWindow";
+import ChatInput  from "./components/ChatInput";
 
 export default function Page() {
   const { token } = useContext(AuthContext);
   const router    = useRouter();
 
-  // grab everything from our ConversationProvider
   const {
     conversations,
     activeId,
-    nativeLanguage,
-    targetLanguage,
     messages,
-    languages,
+    targetLanguage,
     selectConversation,
     newConversation,
     deleteConversation,
     sendMessage,
-    setNativeLanguage,
-    setTargetLanguage,
   } = useConversations();
 
-  // redirect if not authed
   useEffect(() => {
     if (!token) router.replace("/login");
   }, [token, router]);
 
   return (
-    <div className="flex h-full min-h-screen bg-black text-white">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-gray-700 bg-gray-800">
-        <Sidebar />
+    <div className="relative flex h-full min-h-screen bg-gray-900">
+      {/* Header */}
+      <Header />
+
+      {/* Sidebar with dark drop-shadow */}
+      <aside className="fixed top-0 left-0 w-64 h-full bg-gray-800 text-white z-10
+                        shadow-2xl shadow-black/60">
+        <Sidebar
+          conversations={conversations}
+          activeId={activeId}
+          onSelect={selectConversation}
+          onNew={newConversation}
+          onDelete={deleteConversation}
+        />
       </aside>
 
-      {/* Main chat */}
-      <main className="flex-1 flex flex-col">
-        <div className="p-6 flex-1 flex flex-col">
-          {/* Language selectors */}
-          <div className="flex justify-between mb-6">
-            <div className="w-80">
-              <LanguageSelector
-                label="Native language"
-                options={languages}
-                value={nativeLanguage}
-                onChange={setNativeLanguage}
-                disabled={messages.length > 0}
-              />
-            </div>
-            <div className="w-80">
-              <LanguageSelector
-                label="Practice language"
-                options={languages}
-                value={targetLanguage}
-                onChange={setTargetLanguage}
-                disabled={messages.length > 0}
-              />
-            </div>
-          </div>
-
-          {/* Chat history */}
-          <div className="flex-1 overflow-y-auto">
-            <ChatWindow messages={messages} />
-          </div>
+      {/* Main content */}
+      <main className="flex-1 flex flex-col ml-64 mt-16">
+        <div className="flex-1 overflow-y-auto p-6">
+          <ChatWindow messages={messages} />
         </div>
-
-        {/* Input at bottom */}
-        <div className="border-t p-4 bg-gray-900">
+        <div className="border-t border-gray-700 p-4 bg-gray-800">
           <ChatInput
             onSend={sendMessage}
             placeholder={`Type in ${targetLanguage}…`}

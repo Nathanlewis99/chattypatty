@@ -6,48 +6,39 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useMemo,
 } from "react";
 import axios from "axios";
 import { AuthContext } from "./auth/AuthContext";
 
-const ConversationContext = createContext({
-  conversations: [],
-  activeId: null,
-  nativeLanguage: "en",
-  targetLanguage: "es",
-  messages: [],
-  languages: [],
-  selectConversation: () => {},
-  newConversation: () => {},
-  deleteConversation: () => {},
-  sendMessage: () => {},
-  setNativeLanguage: () => {},
-  setTargetLanguage: () => {},
-});
+const ConversationContext = createContext(null);
 
 export function ConversationProvider({ children }) {
   const { token } = useContext(AuthContext);
-  const BACKEND   = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  const [conversations,  setConversations ]  = useState([]);
-  const [activeId,       setActiveId]        = useState(null);
-  const [nativeLanguage, setNativeLanguage]  = useState("en");
-  const [targetLanguage, setTargetLanguage]  = useState("es");
-  const [messages,       setMessages]        = useState([]);
-  const [languages,      setLanguages]       = useState([]);
+  // — raw data from the API —
+  const [conversationsRaw, setConversationsRaw] = useState([]);
+  const [languages, setLanguages] = useState([]);
 
-  // load conversation list
+  // — “current” state —
+  const [activeId, setActiveId] = useState(null);
+  const [nativeLanguage, setNativeLanguage] = useState("en");
+  const [targetLanguage, setTargetLanguage] = useState("es");
+  const [messages, setMessages] = useState([]);
+
+  // 1️⃣ Load saved conversations list
   useEffect(() => {
     if (!token) return;
     axios
       .get(`${BACKEND}/conversations`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      .then(({ data }) => setConversations(data))
+      .then(({ data }) => setConversationsRaw(data))
       .catch(console.error);
-  }, [token, BACKEND]);
+  }, [token]);
 
-  // load languages once
+  // 2️⃣ Load Google‐Translate languages once
   useEffect(() => {
     if (!token) return;
     axios
@@ -55,67 +46,116 @@ export function ConversationProvider({ children }) {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then(({ data }) =>
-        setLanguages(data.map(({ language, name }) => ({
-          value: language,
-          label: name,
-        })))
+        setLanguages(
+          data.map(({ language, name }) => ({
+            value: language,
+            label: name,
+          }))
+        )
       )
       .catch(console.error);
-  }, [token, BACKEND]);
+  }, [token]);
 
-  const selectConversation = (id) => {
-    const conv = conversations.find((c) => c.id === id);
-    if (!conv) return;
-    setActiveId(id);
-    setNativeLanguage(conv.source_language);
-    setTargetLanguage(conv.target_language);
-    setMessages(conv.messages || []);
+  // 3️⃣ Add a nice “title” to each conversation
+  const conversations = useMemo(() => {
+    return conversationsRaw.map((conv) => {
+      const lang = languages.find((l) => l.value === conv.target_language);
+      return {
+        ...conv,
+        title: `${lang?.label || conv.target_language} Conversation`,
+      };
+    });
+  }, [conversationsRaw, languages]);
+
+  // 4️⃣ Select + load a conversation by its ID
+  const selectConversation = async (id) => {
+    try {
+      const { data: conv } = await axios.get(
+        `${BACKEND}/conversations/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      setActiveId(conv.id);
+      setNativeLanguage(conv.source_language);
+      setTargetLanguage(conv.target_language);
+
+      // ← **map** each API message into { from, text }
+      const mapped = (conv.messages || []).map((m) => ({
+        from: m.sender,    // "user" or "assistant"
+        text: m.content,   // the actual text
+        streaming: false,  // already-complete messages
+      }));
+      setMessages(mapped);
+    } catch (err) {
+      console.error("Failed to load conversation:", err);
+    }
   };
 
-  const newConversation = () => {
-    setActiveId(null);
-    setNativeLanguage("en");
-    setTargetLanguage("es");
-    setMessages([]);
+  // 5️⃣ Create (and immediately select) a brand-new conversation
+  const createConversation = async ({ native, target }) => {
+    try {
+      const { data: conv } = await axios.post(
+        `${BACKEND}/conversations`,
+        {
+          source_language: native,
+          target_language: target,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      // add into the raw list...
+      setConversationsRaw((prev) => [...prev, conv]);
+
+      // select it and clear out old messages
+      setActiveId(conv.id);
+      setNativeLanguage(conv.source_language);
+      setTargetLanguage(conv.target_language);
+      setMessages([]);
+    } catch (err) {
+      console.error("Failed to start new conversation:", err);
+    }
   };
 
+  // 6️⃣ Alias for your “New Conversation” button (uses current dropdowns)
+  const startConversation = async () => {
+    await createConversation({
+      native: nativeLanguage,
+      target: targetLanguage,
+    });
+  };
+
+  // 7️⃣ Delete a conversation
   const deleteConversation = async (id) => {
     try {
       await axios.delete(`${BACKEND}/conversations/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setConversations((prev) => prev.filter((c) => c.id !== id));
-      if (activeId === id) newConversation();
+      setConversationsRaw((prev) => prev.filter((c) => c.id !== id));
+
+      if (activeId === id) {
+        // reset to defaults
+        setActiveId(null);
+        setNativeLanguage("en");
+        setTargetLanguage("es");
+        setMessages([]);
+      }
     } catch (err) {
       console.error(err);
     }
   };
 
+  // 8️⃣ Send / stream a message (auto-creates conv on first send)
   const sendMessage = async (text) => {
-    let convId = activeId;
-
-    // if this is the first message in a new convo, create it
-    if (!convId) {
-      const { data: newConv } = await axios.post(
-        `${BACKEND}/conversations`,
-        {
-          source_language: nativeLanguage,
-          target_language: targetLanguage,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      convId = newConv.id;
-      setActiveId(convId);
-      // put the newly created conversation at the top of the list
-      setConversations((prev) => [newConv, ...prev]);
+    if (!activeId) {
+      await startConversation();
     }
 
-    // locally update the chat window
-    setMessages((prev) => [...prev, { from: "user", text }]);
-    setMessages((prev) => [
-      ...prev,
-      { from: "bot", text: "", streaming: true },
-    ]);
+    // push user + placeholder
+    setMessages((m) => [...m, { from: "user", text }]);
+    setMessages((m) => [...m, { from: "bot", text: "", streaming: true }]);
 
     try {
       const res = await fetch(`${BACKEND}/chat`, {
@@ -128,7 +168,7 @@ export function ConversationProvider({ children }) {
           text,
           native_language: nativeLanguage,
           target_language: targetLanguage,
-          conversation_id: convId,
+          conversation_id: activeId,
         }),
       });
       if (!res.ok) throw new Error(res.statusText);
@@ -144,20 +184,25 @@ export function ConversationProvider({ children }) {
           const chunk = dec.decode(value);
           setMessages((prev) => {
             const last = prev[prev.length - 1];
-            if (last.from === "bot" && last.streaming) last.text += chunk;
+            if (last.from === "bot" && last.streaming) {
+              last.text += chunk;
+            }
             return [...prev.slice(0, -1), last];
           });
         }
       }
 
-      // end streaming
+      // finish streaming
       setMessages((prev) => {
         const last = prev[prev.length - 1];
-        if (last.from === "bot" && last.streaming) last.streaming = false;
+        if (last.from === "bot" && last.streaming) {
+          last.streaming = false;
+        }
         return [...prev.slice(0, -1), last];
       });
     } catch (err) {
       console.error(err);
+      // show an error bubble
       setMessages((prev) => {
         const last = prev[prev.length - 1];
         if (last.from === "bot" && last.streaming) {
@@ -172,14 +217,17 @@ export function ConversationProvider({ children }) {
   return (
     <ConversationContext.Provider
       value={{
+        // Data
         conversations,
         activeId,
         nativeLanguage,
         targetLanguage,
         messages,
         languages,
+        // Actions
         selectConversation,
-        newConversation,
+        createConversation,
+        startConversation,
         deleteConversation,
         sendMessage,
         setNativeLanguage,

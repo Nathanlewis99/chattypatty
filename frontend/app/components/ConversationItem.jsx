@@ -1,19 +1,34 @@
-import React from 'react'
-import { useConversations } from '../ConversationContext'
-import DeleteConversationBtn from './DeleteConversationBtn'
+// frontend/app/components/ConversationItem.jsx
+import React from "react";
+import { useConversations } from "../ConversationContext";
 
-export default function ConversationItem({ conv }) {
-  const { activeId, selectConversation } = useConversations()
-  const isActive = conv.id === activeId
+export default function ConversationItem({ conv, isActive, onSelect, onDelete }) {
+  const { languages } = useConversations();
+  // find human‐readable target language name
+  const langName =
+    languages.find((l) => l.value === conv.target_language)?.label ||
+    conv.target_language;
 
   return (
     <li
-      onClick={() => selectConversation(conv.id)}
-      className={isActive ? 'active' : ''}
+      onClick={onSelect}
+      className={`flex items-center justify-between px-4 py-2 cursor-pointer
+        ${isActive ? "bg-gray-700" : "hover:bg-gray-800"} 
+      `}
     >
-      <div className="title">{conv.title || 'New chat'}</div>
-      <div className="lang-tag">{conv.targetLanguage}</div>
-      <DeleteConversationBtn convId={conv.id} />
+      <span className="truncate">
+        {langName} Conversation
+      </span>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        className="text-gray-400 hover:text-red-500"
+        title="Delete"
+      >
+        ×
+      </button>
     </li>
-  )
+  );
 }
