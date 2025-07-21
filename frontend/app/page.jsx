@@ -23,7 +23,7 @@ export default function Page() {
     activeId,
     messages,
     targetLanguage,
-    languages,          // <-- grab the list of { value, label }
+    languages,
     selectConversation,
     newConversation,
     deleteConversation,
@@ -34,17 +34,16 @@ export default function Page() {
     if (!token) router.replace("/login");
   }, [token, router]);
 
-  // look up the human‐readable name, fallback to the code if not found
   const targetLabel =
     languages.find((l) => l.value === targetLanguage)?.label ||
     targetLanguage;
 
   return (
-    <div className="relative flex h-full min-h-screen bg-gray-900">
-      {/* Header */}
+    <div className="relative flex h-screen bg-gray-900">
+      {/* fixed header */}
       <Header />
 
-      {/* Sidebar with dark drop-shadow */}
+      {/* fixed sidebar */}
       <aside
         className="
           fixed top-0 left-0 w-64 h-full
@@ -61,11 +60,21 @@ export default function Page() {
         />
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 flex flex-col ml-64 mt-16">
+      {/* main content sits to the right of sidebar, below header */}
+      <main
+        className="
+          flex-1 flex flex-col
+          ml-64           /* leave room for sidebar */
+          mt-24           /* leave room for header (h-24) */
+          overflow-hidden /* prevent main from pushing past viewport */
+        "
+      >
+        {/* only this div scrolls */}
         <div className="flex-1 overflow-y-auto p-6">
           <ChatWindow messages={messages} />
         </div>
+
+        {/* input bar always sticks to bottom */}
         <div className="border-t border-gray-700 p-4 bg-gray-800">
           <ChatInput
             onSend={sendMessage}
