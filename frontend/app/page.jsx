@@ -23,6 +23,7 @@ export default function Page() {
     activeId,
     messages,
     targetLanguage,
+    languages,          // <-- grab the list of { value, label }
     selectConversation,
     newConversation,
     deleteConversation,
@@ -33,14 +34,24 @@ export default function Page() {
     if (!token) router.replace("/login");
   }, [token, router]);
 
+  // look up the human‐readable name, fallback to the code if not found
+  const targetLabel =
+    languages.find((l) => l.value === targetLanguage)?.label ||
+    targetLanguage;
+
   return (
     <div className="relative flex h-full min-h-screen bg-gray-900">
       {/* Header */}
       <Header />
 
       {/* Sidebar with dark drop-shadow */}
-      <aside className="fixed top-0 left-0 w-64 h-full bg-gray-800 text-white z-10
-                        shadow-2xl shadow-black/60">
+      <aside
+        className="
+          fixed top-0 left-0 w-64 h-full
+          bg-gray-800 text-white z-10
+          shadow-2xl shadow-black/60
+        "
+      >
         <Sidebar
           conversations={conversations}
           activeId={activeId}
@@ -58,7 +69,7 @@ export default function Page() {
         <div className="border-t border-gray-700 p-4 bg-gray-800">
           <ChatInput
             onSend={sendMessage}
-            placeholder={`Type in ${targetLanguage}…`}
+            placeholder={`Type in ${targetLabel}…`}
           />
         </div>
       </main>

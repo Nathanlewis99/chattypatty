@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, ForeignKey, DateTime
+from sqlalchemy import Column, String, ForeignKey, DateTime, Text
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -25,6 +25,7 @@ class Conversation(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
     source_language = Column(String, nullable=False)
     target_language = Column(String, nullable=False)
+    prompt = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     user = relationship("UserTable", back_populates="conversations")

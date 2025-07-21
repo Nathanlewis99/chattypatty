@@ -33,13 +33,18 @@ class ConversationRead(BaseModel):
     id: UUID
     source_language: str
     target_language: str
+    prompt: Optional[str] = None
     created_at: datetime
     messages: List[MessageRead] = []
+
+    class config:
+        orm_mode = True
 
 
 class ConversationCreate(BaseModel):
     source_language: str
     target_language: str
+    prompt: Optional[str] = None
 
 
 class MessageCreate(BaseModel):

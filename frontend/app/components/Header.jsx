@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useContext } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AuthContext } from "../auth/AuthContext";
 
@@ -23,13 +24,37 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-16 bg-gray-900 flex items-center justify-end px-4 z-0">
+    <header
+      className="
+        fixed top-0 left-0 right-0
+        h-24            /* 96px high */
+        bg-gray-900
+        flex items-center justify-between
+        px-4 pl-64      /* leave room for sidebar */
+        z-0
+      "
+    >
+      {/* left: logo */}
+      <div className="flex items-center">
+        <Image
+          src="/ChattyPattyLogo.png"
+          alt="ChattyPatty Logo"
+          width={100}
+          height={100}
+          className="
+            object-contain
+            h-20 w-20      /* 80px on smallest */
+            sm:h-24 sm:w-24/* 96px on sm+ */
+          "
+        />
+      </div>
+
+      {/* right: profile menu */}
       <div className="relative" ref={ref}>
         <button
           onClick={() => setOpen(o => !o)}
           className="p-2 rounded-full hover:bg-gray-800"
         >
-          {/* user icon */}
           <svg
             className="w-6 h-6 text-white"
             fill="currentColor"

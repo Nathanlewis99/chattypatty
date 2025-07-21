@@ -1,14 +1,11 @@
-// frontend/app/components/ConversationItem.jsx
 import React from "react";
-import { useConversations } from "../ConversationContext";
 
-export default function ConversationItem({ conv, isActive, onSelect, onDelete }) {
-  const { languages } = useConversations();
-  // find human‐readable target language name
-  const langName =
-    languages.find((l) => l.value === conv.target_language)?.label ||
-    conv.target_language;
-
+export default function ConversationItem({
+  conv,
+  isActive,
+  onSelect,
+  onDelete,
+}) {
   return (
     <li
       onClick={onSelect}
@@ -16,9 +13,7 @@ export default function ConversationItem({ conv, isActive, onSelect, onDelete })
         ${isActive ? "bg-gray-700" : "hover:bg-gray-800"} 
       `}
     >
-      <span className="truncate">
-        {langName} Conversation
-      </span>
+      <span className="truncate">{conv.title}</span>
       <button
         onClick={(e) => {
           e.stopPropagation();
