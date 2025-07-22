@@ -5,8 +5,10 @@ import LanguageSelector from "./LanguageSelector";
 import ModeSwitch from "./ModeSwitch";
 import ScenarioPrompt from "./ScenarioPrompt";
 import SearchBar from "./SearchBar";
-import { useConversations } from "../ConversationContext";
 import ConversationList from "./ConversationList";
+import VocabHelper from "./VocabHelper";
+import { useConversations } from "../ConversationContext";
+import { useChatInputBridge } from "../hooks/useChatInputBridge";
 
 export default function Sidebar() {
   const {
@@ -16,7 +18,6 @@ export default function Sidebar() {
     setNativeLanguage,
     setTargetLanguage,
 
-    // scenario bits
     scenarioEnabled,
     setScenarioEnabled,
     scenarioPrompt,
@@ -30,10 +31,10 @@ export default function Sidebar() {
     isCreating,
   } = useConversations();
 
-  // local search state
+  const { setBuffer } = useChatInputBridge(); // to push vocab → chat input
+
   const [searchTerm, setSearchTerm] = useState("");
 
-  // filter conversations by title
   const filtered = conversations.filter((conv) =>
     conv.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -55,10 +56,10 @@ export default function Sidebar() {
           onChange={setTargetLanguage}
         />
 
-        {/* Mode switch component */}
+        {/* Mode switch */}
         <ModeSwitch enabled={scenarioEnabled} onToggle={setScenarioEnabled} />
 
-        {/* Conditional prompt component */}
+        {/* Scenario prompt */}
         {scenarioEnabled && (
           <ScenarioPrompt value={scenarioPrompt} onChange={setScenarioPrompt} />
         )}
@@ -73,6 +74,13 @@ export default function Sidebar() {
         >
           {isCreating ? "Loading…" : "+ New Conversation"}
         </button>
+
+        {/* Vocab Helper */}
+        <VocabHelper
+          native={nativeLanguage}
+          target={targetLanguage}
+          onInsert={(txt) => setBuffer(txt)}
+        />
       </div>
 
       <hr className="border-gray-700" />
@@ -86,6 +94,7 @@ export default function Sidebar() {
         />
       </div>
 
+      {/* Conversation list */}
       <ConversationList
         conversations={filtered}
         activeId={activeId}

@@ -6,18 +6,15 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AuthContext } from "../auth/AuthContext";
 
-export default function Header() {
+export default function Header({ onToggleSidebar }) {
   const { logout } = useContext(AuthContext);
-  const router    = useRouter();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  // close dropdown when clicking outside
   useEffect(() => {
     function handleClick(e) {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setOpen(false);
-      }
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -27,13 +24,22 @@ export default function Header() {
     <header
       className="
         fixed top-0 left-0 right-0
-        h-24            /* 96px high */
-        bg-gray-900
+        h-24 bg-gray-900
         flex items-center justify-between
-        px-4 pl-64      /* leave room for sidebar */
-        z-0
+        px-4 pl-20 md:pl-64
+        z-40
+        shadow-md
       "
     >
+      {/* optional burger on mobile to open sidebar */}
+      <button
+        className="md:hidden mr-2 text-white p-2 rounded hover:bg-gray-800"
+        onClick={onToggleSidebar}
+        aria-label="Toggle sidebar"
+      >
+        ☰
+      </button>
+
       {/* left: logo */}
       <div className="flex items-center">
         <Image
@@ -41,18 +47,15 @@ export default function Header() {
           alt="ChattyPatty Logo"
           width={100}
           height={100}
-          className="
-            object-contain
-            h-20 w-20      /* 80px on smallest */
-            sm:h-24 sm:w-24/* 96px on sm+ */
-          "
+          className="object-contain h-20 w-20 sm:h-24 sm:w-24"
+          priority
         />
       </div>
 
       {/* right: profile menu */}
       <div className="relative" ref={ref}>
         <button
-          onClick={() => setOpen(o => !o)}
+          onClick={() => setOpen((o) => !o)}
           className="p-2 rounded-full hover:bg-gray-800"
         >
           <svg
