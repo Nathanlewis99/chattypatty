@@ -19,17 +19,17 @@ export function ConversationProvider({ children }) {
 
   // — raw data + language options
   const [conversationsRaw, setConversationsRaw] = useState([]);
-  const [languages, setLanguages] = useState([]);
+  const [languages, setLanguages]               = useState([]);
 
   // — UI state
-  const [activeId, setActiveId] = useState(null);
+  const [activeId, setActiveId]   = useState(null);
   const [nativeLanguage, setNativeLanguage] = useState("en");
   const [targetLanguage, setTargetLanguage] = useState("es");
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages]             = useState([]);
 
   // — scenario state
   const [scenarioEnabled, setScenarioEnabled] = useState(false);
-  const [scenarioPrompt, setScenarioPrompt] = useState("");
+  const [scenarioPrompt, setScenarioPrompt]   = useState("");
 
   // — loading indicator for “New Conversation”
   const [isCreating, setIsCreating] = useState(false);
@@ -71,30 +71,22 @@ export function ConversationProvider({ children }) {
   // 3️⃣ decorate with title + sort by last activity
   const conversations = useMemo(() => {
     const withActivity = conversationsRaw.map((conv) => {
-      // last message timestamp or conversation.created_at
-      const lastMsgTs = conv.messages && conv.messages.length
-        ? Math.max(
-            ...conv.messages.map((m) =>
-              new Date(m.created_at).getTime()
+      const lastMsgTs =
+        conv.messages && conv.messages.length
+          ? Math.max(
+              ...conv.messages.map((m) => new Date(m.created_at).getTime())
             )
-          )
-        : new Date(conv.created_at).getTime();
+          : new Date(conv.created_at).getTime();
 
-      // title: scenario prompt if present, else language name
       const lang = languages.find((l) => l.value === conv.target_language);
       const title = conv.prompt
-        ? conv.prompt.length > 30
-          ? conv.prompt.slice(0, 30) + "…"
-          : conv.prompt
+        ? conv.prompt
         : `${lang?.label || conv.target_language} Conversation`;
 
       return { ...conv, title, lastActivity: lastMsgTs };
     });
 
-    // newest first
     withActivity.sort((a, b) => b.lastActivity - a.lastActivity);
-
-    // strip helper field
     return withActivity.map(({ lastActivity, ...keep }) => keep);
   }, [conversationsRaw, languages]);
 
@@ -114,7 +106,7 @@ export function ConversationProvider({ children }) {
     }
   };
 
-  // 5️⃣ create + select a new conversation
+  // 5️⃣ create + select a new conversation (now returns the new ID)
   const startConversation = async () => {
     setIsCreating(true);
     try {
@@ -132,13 +124,12 @@ export function ConversationProvider({ children }) {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // insert new convo at front
       setConversationsRaw((prev) => [conv, ...prev]);
       await selectConversation(conv.id);
       return conv.id;
     } catch (err) {
       console.error("Failed to start new conversation:", err);
-      throw err;
+      return null;
     } finally {
       setIsCreating(false);
     }
@@ -164,20 +155,20 @@ export function ConversationProvider({ children }) {
 
   // 7️⃣ send/stream a chat message
   const sendMessage = async (text) => {
-    // ensure conversation exists
-    let convoId = activeId;
-    if (!convoId) {
-      convoId = await startConversation();
+    // ensure there's a conversation before sending
+    let convId = activeId;
+    if (!convId) {
+      convId = await startConversation();
+      if (!convId) return;
     }
-    setActiveId(convoId);
 
     const now = new Date().toISOString();
 
-    // 7a) locally append user → UI & raw list
+    // locally append user
     setMessages((m) => [...m, { from: "user", text }]);
     setConversationsRaw((prev) =>
       prev.map((c) =>
-        c.id === convoId
+        c.id === convId
           ? {
               ...c,
               messages: [
@@ -203,7 +194,7 @@ export function ConversationProvider({ children }) {
           text,
           native_language: nativeLanguage,
           target_language: targetLanguage,
-          conversation_id: convoId,
+          conversation_id: convId,
           prompt:
             scenarioEnabled && scenarioPrompt.trim()
               ? scenarioPrompt.trim()
@@ -242,11 +233,11 @@ export function ConversationProvider({ children }) {
         return [...prev.slice(0, -1), last];
       });
 
-      // 7b) append assistant → raw list
-      const botTs = new Date().toISOString();
+      // append assistant to raw
+      const botTimestamp = new Date().toISOString();
       setConversationsRaw((prev) =>
         prev.map((c) =>
-          c.id === convoId
+          c.id === convId
             ? {
                 ...c,
                 messages: [
@@ -254,7 +245,7 @@ export function ConversationProvider({ children }) {
                   {
                     sender: "assistant",
                     content: assistantReply.trim(),
-                    created_at: botTs,
+                    created_at: botTimestamp,
                   },
                 ],
               }
@@ -298,6 +289,8 @@ export function ConversationProvider({ children }) {
         startConversation,
         deleteConversation,
         sendMessage,
+        // raw setter for voice flows
+        setConversationsRaw,
       }}
     >
       {children}

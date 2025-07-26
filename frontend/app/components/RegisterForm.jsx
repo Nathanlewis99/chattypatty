@@ -1,28 +1,48 @@
+// frontend/app/components/RegisterForm.jsx
 "use client";
 
-import { useState, useContext } from "react";
-import { AuthContext } from "../auth/AuthContext";
+import { useState, useRef, useContext } from "react";
 import { useRouter } from "next/navigation";
+import ReCAPTCHA from "react-google-recaptcha";
+import { AuthContext } from "../auth/AuthContext";
 
 export default function RegisterForm() {
   const { register } = useContext(AuthContext);
-  const [email, setEmail]         = useState("");
-  const [fullName, setFullName]   = useState("");
-  const [password, setPassword]   = useState("");
-  const [error, setError]         = useState("");
-  const [success, setSuccess]     = useState(false);
-  const router = useRouter();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail]       = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError]       = useState("");
+  const [success, setSuccess]   = useState(false);
+  const [loading, setLoading]   = useState(false);
+  const recaptchaRef            = useRef(null);
+  const [token, setToken]       = useState("");
+  const router                  = useRouter();
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    if (!token) {
+      setError("Please complete the reCAPTCHA");
+      return;
+    }
+
+    setLoading(true);
     try {
-      await register({ email, password, full_name: fullName });
+      await register({
+        full_name: fullName,
+        email,
+        password,
+        recaptcha_token: token,
+      });
       setSuccess(true);
-      // after a short delay, redirect to login
+      recaptchaRef.current?.reset();
+      setToken("");
       setTimeout(() => router.push("/login"), 1500);
     } catch (err) {
-      setError("Registration failed. Maybe that email is taken?");
+      setError("Registration failed. Maybe that email is taken or reCAPTCHA failed?");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -44,14 +64,19 @@ export default function RegisterForm() {
         <input
           type="text"
           value={fullName}
-          onChange={e => setFullName(e.target.value)}
+          onChange={(e) => setFullName(e.target.value)}
           placeholder="Jane Doe"
+          required
           className="
             w-full
-            bg-gray-700 border border-gray-600 text-white placeholder-gray-400
-            p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500
+            bg-gray-700
+            border border-gray-600
+            text-white
+            placeholder-gray-400
+            p-3
+            rounded
+            focus:outline-none focus:ring-2 focus:ring-blue-500
           "
-          required
         />
       </div>
 
@@ -60,14 +85,19 @@ export default function RegisterForm() {
         <input
           type="email"
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
+          required
           className="
             w-full
-            bg-gray-700 border border-gray-600 text-white placeholder-gray-400
-            p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500
+            bg-gray-700
+            border border-gray-600
+            text-white
+            placeholder-gray-400
+            p-3
+            rounded
+            focus:outline-none focus:ring-2 focus:ring-blue-500
           "
-          required
         />
       </div>
 
@@ -76,25 +106,45 @@ export default function RegisterForm() {
         <input
           type="password"
           value={password}
-          onChange={e => setPassword(e.target.value)}
+          onChange={(e) => setPassword(e.target.value)}
           placeholder="••••••••"
+          required
           className="
             w-full
-            bg-gray-700 border border-gray-600 text-white placeholder-gray-400
-            p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500
+            bg-gray-700
+            border border-gray-600
+            text-white
+            placeholder-gray-400
+            p-3
+            rounded
+            focus:outline-none focus:ring-2 focus:ring-blue-500
           "
-          required
         />
       </div>
 
+      <ReCAPTCHA
+        ref={recaptchaRef}
+        sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}
+        onChange={(t) => {
+          setToken(t);
+          setError("");
+        }}
+      />
+
       <button
         type="submit"
-        className="
-          w-full bg-blue-600 hover:bg-blue-700 text-white font-medium
-          py-3 rounded transition
-        "
+        disabled={loading}
+        className={`
+          w-full
+          ${loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"}
+          text-white
+          font-medium
+          py-3
+          rounded
+          transition
+        `}
       >
-        Create Account
+        {loading ? "Creating…" : "Create Account"}
       </button>
     </form>
   );

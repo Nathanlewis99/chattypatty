@@ -1,9 +1,11 @@
 FROM python:3.11-slim
 
-# 1) Install OS deps (postgres client for pg_isready)
-RUN apt-get update \
- && apt-get install -y --no-install-recommends postgresql-client \
- && rm -rf /var/lib/apt/lists/*
+# 1) OS deps for Postgres and audio
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      postgresql-client \
+      ffmpeg \
+      libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
 
 # 2) Set workdir
 WORKDIR /app

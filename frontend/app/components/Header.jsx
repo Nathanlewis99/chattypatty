@@ -3,18 +3,21 @@
 
 import { useState, useRef, useEffect, useContext } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthContext } from "../auth/AuthContext";
 
 export default function Header({ onToggleSidebar }) {
-  const { logout } = useContext(AuthContext);
+  const { token, logout } = useContext(AuthContext);
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
     function handleClick(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -31,7 +34,7 @@ export default function Header({ onToggleSidebar }) {
         shadow-md
       "
     >
-      {/* optional burger on mobile to open sidebar */}
+      {/* mobile sidebar toggle */}
       <button
         className="md:hidden mr-2 text-white p-2 rounded hover:bg-gray-800"
         onClick={onToggleSidebar}
@@ -40,7 +43,7 @@ export default function Header({ onToggleSidebar }) {
         ☰
       </button>
 
-      {/* left: logo */}
+      {/* logo */}
       <div className="flex items-center">
         <Image
           src="/ChattyPattyLogo.png"
@@ -52,11 +55,12 @@ export default function Header({ onToggleSidebar }) {
         />
       </div>
 
-      {/* right: profile menu */}
+      {/* profile / auth menu */}
       <div className="relative" ref={ref}>
         <button
           onClick={() => setOpen((o) => !o)}
           className="p-2 rounded-full hover:bg-gray-800"
+          aria-label="Open menu"
         >
           <svg
             className="w-6 h-6 text-white"
@@ -69,24 +73,47 @@ export default function Header({ onToggleSidebar }) {
 
         {open && (
           <div className="absolute right-0 mt-2 w-48 bg-gray-900 text-white rounded shadow-lg overflow-hidden">
-            <button
-              onClick={() => {
-                setOpen(false);
-                logout();
-              }}
-              className="block w-full text-left px-4 py-2 hover:bg-gray-800"
-            >
-              Logout
-            </button>
-            <button
-              onClick={() => {
-                setOpen(false);
-                router.push("/reset-password");
-              }}
-              className="block w-full text-left px-4 py-2 hover:bg-gray-800"
-            >
-              Reset Password
-            </button>
+            {token ? (
+              <>
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    logout();
+                  }}
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-800"
+                >
+                  Logout
+                </button>
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    router.push("/reset-password");
+                  }}
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-800"
+                >
+                  Reset Password
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/login">
+                  <a
+                    onClick={() => setOpen(false)}
+                    className="block px-4 py-2 hover:bg-gray-800"
+                  >
+                    Log In
+                  </a>
+                </Link>
+                <Link href="/register">
+                  <a
+                    onClick={() => setOpen(false)}
+                    className="block px-4 py-2 hover:bg-gray-800"
+                  >
+                    Sign Up
+                  </a>
+                </Link>
+              </>
+            )}
           </div>
         )}
       </div>

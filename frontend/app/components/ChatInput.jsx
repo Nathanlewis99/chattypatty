@@ -1,23 +1,16 @@
+// frontend/app/components/ChatInput.jsx
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useChatInputBridge } from "../hooks/useChatInputBridge";
+import { useState, useRef } from "react";
+import { MicrophoneIcon } from "@heroicons/react/24/outline";
 
-export default function ChatInput({ onSend, placeholder = "Type your message…" }) {
+export default function ChatInput({
+  onSend,
+  onVoice,
+  placeholder = "Type your message…",
+}) {
   const [value, setValue] = useState("");
-  const textareaRef = useRef(null);
-
-  // pull injected text from the vocab helper
-  const { buffer, setBuffer } = useChatInputBridge();
-
-  // when buffer changes, append and clear it
-  useEffect(() => {
-    if (buffer) {
-      setValue((v) => (v ? v + " " + buffer : buffer));
-      setBuffer("");
-      textareaRef.current?.focus();
-    }
-  }, [buffer, setBuffer]);
+  const textareaRef      = useRef(null);
 
   const handleSend = () => {
     const text = value.trim();
@@ -35,7 +28,7 @@ export default function ChatInput({ onSend, placeholder = "Type your message…"
   };
 
   return (
-    <div className="flex items-start space-x-2">
+    <div className="flex items-center space-x-2">
       <textarea
         ref={textareaRef}
         rows={2}
@@ -47,18 +40,24 @@ export default function ChatInput({ onSend, placeholder = "Type your message…"
           flex-1
           bg-gray-800
           text-white
-          border
-          border-gray-600
-          p-2
-          rounded
+          border border-gray-600
+          p-2 rounded
           resize-none
-          focus:outline-none
-          focus:ring
+          focus:outline-none focus:ring
         "
       />
+
+      {/* existing mic button, to the right of the textarea */}
+      <button
+        onClick={onVoice}
+        className="p-2 hover:bg-gray-700 rounded"
+        aria-label="Speak"
+      >
+        <MicrophoneIcon className="w-6 h-6 text-white" />
+      </button>
+
       <button
         onClick={handleSend}
-        type="button"
         className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
       >
         Send
