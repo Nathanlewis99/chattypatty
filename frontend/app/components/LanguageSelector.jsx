@@ -1,6 +1,8 @@
+// frontend/app/components/LanguageSelector.jsx
 "use client";
 
 import Select from "react-select";
+import { useEffect, useState } from "react";
 
 const darkStyles = {
   control: (provided) => ({
@@ -17,6 +19,12 @@ const darkStyles = {
     ...provided,
     backgroundColor: "#1f2937",
     color: "#ffffff",
+    maxHeight: "200px",          // cap the menu height
+    overflowY: "auto",
+  }),
+  menuPortal: (provided) => ({
+    ...provided,
+    zIndex: 9999,                // float above everything
   }),
   option: (provided, state) => ({
     ...provided,
@@ -40,12 +48,18 @@ const darkStyles = {
 
 export default function LanguageSelector({
   label,
-  options = [],        // ← default to empty array
+  options = [],
   value,
   onChange,
-  disabled = false,    // ← accept disabled
+  disabled = false,
 }) {
   const selected = options.find((opt) => opt.value === value) || null;
+  const [portalTarget, setPortalTarget] = useState(null);
+
+  // wait until document is available
+  useEffect(() => {
+    setPortalTarget(document.body);
+  }, []);
 
   return (
     <div className="flex flex-col">
@@ -59,6 +73,10 @@ export default function LanguageSelector({
         isDisabled={disabled}
         placeholder={`Select ${label.toLowerCase()}…`}
         className="w-full"
+        // render the menu in a portal so it floats and doesn’t push
+        menuPortalTarget={portalTarget}
+        menuPosition="fixed"
+        maxMenuHeight={200}
         theme={(theme) => ({
           ...theme,
           borderRadius: 4,

@@ -32,7 +32,7 @@ export default function LoginForm() {
         password,
         recaptcha_token: token,
       });
-      router.push("/");
+      router.push("/chat");
     } catch (err) {
       setError("Invalid credentials or reCAPTCHA failed");
       recaptchaRef.current?.reset();

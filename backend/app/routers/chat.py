@@ -103,7 +103,7 @@ and they want to practice {msg.target_language}.
 **Example:**
 User: “Yo comí manzanas ayer.”
 Assistant:
-“Correction (in {msg.native_language}):
+“Correction (in {msg.native_language} (use the full verbose name for the language (for example "English" rather than "ES"))):
 It looks like you were trying to say ‘I ate apples yesterday.’
 The correct Spanish is 'Ayer comí manzanas', because...”
 

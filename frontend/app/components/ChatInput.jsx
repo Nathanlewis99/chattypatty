@@ -58,7 +58,7 @@ export default function ChatInput({
 
       <button
         onClick={handleSend}
-        className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+        className="p-2 bg-blue-600 text-white animated-gradient rounded hover:scale-105 transition cursor-pointer"
       >
         Send
       </button>

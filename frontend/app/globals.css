@@ -24,3 +24,45 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ─── Animated gradient background utility ─── */
+@layer utilities {
+  .animated-gradient {
+    background: linear-gradient(
+      270deg,
+      #8e2de2,
+      #4a00e0,
+      #ff8c00,
+      #ff0080
+    );
+    background-size: 600% 600%;
+    animation: gradientShift 16s ease infinite;
+  }
+
+  /* ─── Animated gradient text utility ─── */
+  .animated-text-gradient {
+    background: linear-gradient(
+      270deg,
+      #8e2de2,
+      #4a00e0,
+      #ff8c00,
+      #ff0080
+    );
+    background-size: 600% 600%;
+    animation: gradientShift 16s ease infinite;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}

@@ -21,8 +21,10 @@ export default function VoiceOverlay({
   const recognitionRef = useRef(null);
   const convIdRef = useRef(null);
   const isProcessingRef = useRef(false);
+
   const [listening, setListening] = useState(false);
   const [error, setError] = useState(null);
+  const [transcriptHistory, setTranscriptHistory] = useState([]);
 
   /**
    * Handles one utterance cycle:
@@ -36,6 +38,12 @@ export default function VoiceOverlay({
     async (text) => {
       const rec = recognitionRef.current;
       isProcessingRef.current = true;
+
+      // record user turn
+      setTranscriptHistory((h) => [
+        ...h,
+        { speaker: "You", text },
+      ]);
 
       // 1) Abort recognition
       try { rec.abort(); } catch {}
@@ -58,19 +66,32 @@ export default function VoiceOverlay({
       try {
         const { data: vt } = await axios.post(
           `${BACKEND}/voice-turn`,
-          { text, native_language: nativeLanguage, target_language: targetLanguage, conversation_id: id, prompt: scenarioPrompt },
+          {
+            text,
+            native_language: nativeLanguage,
+            target_language: targetLanguage,
+            conversation_id: id,
+            prompt: scenarioPrompt,
+          },
           { headers: { Authorization: `Bearer ${token}` } }
         );
         assistantText = vt.assistant_text || vt.text || "";
       } catch (err) {
         console.error("voice-turn error", err);
-        // Restart recognition
-        if (open) { try { rec.start(); setListening(true); } catch {} }
+        if (open) {
+          try { rec.start(); setListening(true); } catch {}
+        }
         isProcessingRef.current = false;
         return;
       }
 
-      // Update UI
+      // record assistant turn
+      setTranscriptHistory((h) => [
+        ...h,
+        { speaker: "Patty", text: assistantText },
+      ]);
+
+      // Update main UI
       try {
         onNewAssistantTurn(assistantText, id);
       } catch (err) {
@@ -82,7 +103,10 @@ export default function VoiceOverlay({
         const { data: ttsBytes } = await axios.post(
           `${BACKEND}/tts`,
           { text: assistantText },
-          { headers: { Authorization: `Bearer ${token}` }, responseType: "arraybuffer" }
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            responseType: "arraybuffer",
+          }
         );
         const blob = new Blob([ttsBytes], { type: "audio/mpeg" });
         const url = URL.createObjectURL(blob);
@@ -90,16 +114,29 @@ export default function VoiceOverlay({
         audio.onended = () => {
           URL.revokeObjectURL(url);
           isProcessingRef.current = false;
-          if (open) { try { rec.start(); setListening(true); } catch {} }
+          if (open) {
+            try { rec.start(); setListening(true); } catch {}
+          }
         };
         await audio.play();
       } catch (err) {
         console.error("tts error", err);
         isProcessingRef.current = false;
-        if (open) { try { rec.start(); setListening(true); } catch {} }
+        if (open) {
+          try { rec.start(); setListening(true); } catch {}
+        }
       }
     },
-    [BACKEND, ensureConversation, nativeLanguage, onNewAssistantTurn, scenarioPrompt, targetLanguage, token, open]
+    [
+      BACKEND,
+      ensureConversation,
+      nativeLanguage,
+      onNewAssistantTurn,
+      scenarioPrompt,
+      targetLanguage,
+      token,
+      open,
+    ]
   );
 
   // Initialize speech recognition
@@ -114,11 +151,12 @@ export default function VoiceOverlay({
     const rec = new SR();
     rec.continuous = true;
     rec.interimResults = false;
-    rec.lang = targetLanguage === "es"
-      ? "es-ES"
-      : targetLanguage === "en"
-      ? "en-US"
-      : `${targetLanguage}-${targetLanguage.toUpperCase()}`;
+    rec.lang =
+      targetLanguage === "es"
+        ? "es-ES"
+        : targetLanguage === "en"
+        ? "en-US"
+        : `${targetLanguage}-${targetLanguage.toUpperCase()}`;
 
     rec.onstart = () => setListening(true);
     rec.onerror = (e) => {
@@ -153,17 +191,47 @@ export default function VoiceOverlay({
   }, [open, targetLanguage, processVoiceTurn]);
 
   if (!open) return null;
+
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-6">
-      <button onClick={onClose} className="absolute top-4 right-4 text-gray-300 hover:text-white text-2xl">✕</button>
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 text-gray-300 hover:text-white text-2xl"
+      >
+        ✕
+      </button>
+
       {error && <p className="text-red-400 mb-4">{error}</p>}
+
+      {/* Mic & status */}
       <div className="flex flex-col items-center">
-        <div className={`p-4 rounded-full bg-gray-700 ${listening ? "animate-pulse" : ""}`}>          
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white" fill="currentColor" viewBox="0 0 24 24">
+        <div className={`p-4 rounded-full bg-gray-700 ${listening ? "animate-pulse" : ""}`}>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-12 w-12 text-white"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0h-2zM11 19.93V22h2v-2.07a8 8 0 0 0 6.938-6.938l-1.999-.264A6 6 0 0 1 6.06 15.06l-2 .265A8 8 0 0 0 11 19.93z" />
           </svg>
         </div>
-        <p className="mt-4 text-lg text-gray-300">{listening ? "Listening…" : "Waiting…"}</p>
+        <p className="mt-4 text-lg text-gray-300">
+          {listening ? "Listening…" : "Waiting…"}
+        </p>
+      </div>
+
+      {/* Transcript history */}
+      <div className="mt-6 w-full max-w-xl max-h-60 overflow-y-auto bg-gray-800 bg-opacity-60 rounded p-4">
+        {transcriptHistory.map((turn, idx) => (
+          <p
+            key={idx}
+            className={`mb-2 ${
+              turn.speaker === "You" ? "text-blue-300" : "text-pink-300"
+            }`}
+          >
+            <span className="font-semibold">{turn.speaker}:</span> {turn.text}
+          </p>
+        ))}
       </div>
     </div>
   );

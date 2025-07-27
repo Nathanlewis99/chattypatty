@@ -71,7 +71,7 @@ and they want to practice {payload.target_language}.
 **Example:**  
 User: “Yo comí manzanas ayer.”  
 Assistant:  
-“Correction (in {payload.source_language}):  
+“Correction (in {payload.source_language} (use the full verbose name for the language (for example "English" rather than "ES"))):  
 It looks like you were trying to say ‘I ate apples yesterday.’  
 The correct way to say this in Spanish would be 'Ayer comí manzanas', because...  
 
