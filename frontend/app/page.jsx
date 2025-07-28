@@ -157,7 +157,6 @@ export default function LandingPage() {
             options={languages}
             value=""
             onChange={() => {}}
-            disabled
           />
         </div>
       </section>

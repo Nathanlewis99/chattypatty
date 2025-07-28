@@ -1,11 +1,13 @@
 # backend/app/routers/voice_turn.py
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from fastapi.responses import JSONResponse
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from ..users import fastapi_users, UserRead
 from ..routers.conversations import get_db
@@ -21,7 +23,7 @@ class VoiceTurnIn(BaseModel):
     text: str
     native_language: str
     target_language: str
-    conversation_id: str
+    conversation_id: str | None = None
     prompt: str | None = None
 
 
@@ -31,12 +33,29 @@ async def voice_turn(
     user: UserRead = Depends(fastapi_users.current_user()),
     db: AsyncSession = Depends(get_db),
 ):
-    # 1) ensure conversation exists
-    conv = await db.get(ConvModel, msg.conversation_id)
-    if not conv or conv.user_id != user.id:
-        raise HTTPException(404, "Conversation not found")
+    # ── 0) Ensure conversation (same as /chat)
+    if msg.conversation_id:
+        conv = await db.get(ConvModel, msg.conversation_id)
+        if not conv or conv.user_id != user.id:
+            raise HTTPException(404, "Conversation not found")
+        # if a prompt came in and none was saved, persist it
+        if msg.prompt and not conv.prompt:
+            conv.prompt = msg.prompt.strip()
+            db.add(conv)
+            await db.commit()
+            await db.refresh(conv)
+    else:
+        conv = ConvModel(
+            user_id=user.id,
+            source_language=msg.native_language,
+            target_language=msg.target_language,
+            prompt=msg.prompt.strip() if msg.prompt else None,
+        )
+        db.add(conv)
+        await db.commit()
+        await db.refresh(conv)
 
-    # 2) persist the user's message
+    # ── 1) Persist the user’s “spoken” message
     db.add(
         MessageModel(
             conversation_id=conv.id,
@@ -46,22 +65,14 @@ async def voice_turn(
     )
     await db.commit()
 
-    # 3) load full history for this conversation
-    stmt = (
-        select(MessageModel)
-        .where(MessageModel.conversation_id == conv.id)
-        .order_by(MessageModel.created_at)
-    )
-    result = await db.execute(stmt)
-    history = result.scalars().all()
-
-    # 4) build the system instructions
+    # ── 2) Build system instructions (same as /chat)
     parts: list[str] = []
     if conv.prompt:
         parts.append(f"Context: {conv.prompt.strip()}")
 
     tutor = f"""
 You are a friendly {msg.target_language} tutor.
+Your name is Chatty Patty (Patty for short).
 The user’s native language is {msg.native_language},
 and they want to practice {msg.target_language}.
 
@@ -73,27 +84,34 @@ and they want to practice {msg.target_language}.
 3. The correction must **never** be in {msg.target_language}.
 4. The correction should explain why the user's attempt was wrong and why the correction is right.
 5. Always include exactly one blank line between the correction and the reply.
-""".strip()
+6. If the user says everything correctly, no correction is needed.
 
+**Example:**
+User: “Yo comí manzanas ayer.”
+Assistant:
+“Correction (in {msg.native_language} (use the full verbose name for the language (for example "English" rather than "ES")):
+It looks like you were trying to say ‘I ate apples yesterday.’
+The correct way to say this in Spanish would be 'Ayer comí manzanas', because...”
+
+Conversational response:
+Cuéntame más sobre otras frutas que te gusten.
+""".strip()
     parts.append(tutor)
 
-    # 5) assemble the messages array
-    payload_messages: list[dict] = []
-    for part in parts:
-        payload_messages.append({"role": "system", "content": part})
-    for m in history:
-        role = "assistant" if m.sender == "assistant" else "user"
-        payload_messages.append({"role": role, "content": m.content})
+    system_content = "\n\n".join(parts)
 
-    # 6) call OpenAI
+    # ── 3) Call OpenAI (non‑streaming)
     resp = client.chat.completions.create(
         model="gpt-4.1",
-        messages=payload_messages,
+        messages=[
+            {"role": "system", "content": system_content},
+            {"role": "user",   "content": msg.text},
+        ],
         stream=False,
     )
     assistant_text = resp.choices[0].message.content or ""
 
-    # 7) save assistant reply
+    # ── 4) Persist assistant reply
     db.add(
         MessageModel(
             conversation_id=conv.id,
@@ -103,5 +121,5 @@ and they want to practice {msg.target_language}.
     )
     await db.commit()
 
-    # 8) return for TTS playback
-    return {"assistant_text": assistant_text}
+    # ── 5) Return assistant text for TTS
+    return JSONResponse({"assistant_text": assistant_text})

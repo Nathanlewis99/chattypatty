@@ -1,3 +1,4 @@
+// frontend/app/components/ChatWindow.jsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -16,6 +17,9 @@ export default function ChatWindow({ messages }) {
 
   // cache for per‑word translations:
   const [wordCache, setWordCache] = useState({});
+
+  // timers for hover delays
+  const hoverTimersRef = useRef({});
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -82,22 +86,35 @@ export default function ChatWindow({ messages }) {
         return (
           <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[75%] whitespace-pre-wrap break-words px-4 py-2 rounded ${bubbleClasses}`}>
-              {!isUser
-                ? displayText.split(" ").map((word, wi) => (
-                    <span
-                      key={wi}
-                      className="relative"
-                      title={wordCache[word] || ""}
-                      onMouseEnter={() => fetchWord(word)}
-                      onClick={() => fetchWord(word)}
-                    >
-                      {word}{" "}
-                    </span>
-                  ))
+              { !isUser
+                ? displayText.split(" ").map((word, wi) => {
+                    const timerId = `msg${i}-word${wi}`;
+                    return (
+                      <span
+                        key={wi}
+                        className="relative cursor-help"
+                        title={wordCache[word] || ""}
+                        onMouseEnter={() => {
+                          // start 0.8s timer to fetch translation
+                          hoverTimersRef.current[timerId] = setTimeout(
+                            () => fetchWord(word),
+                            450
+                          );
+                        }}
+                        onMouseLeave={() => {
+                          // cancel if you leave early
+                          clearTimeout(hoverTimersRef.current[timerId]);
+                          delete hoverTimersRef.current[timerId];
+                        }}
+                      >
+                        {word}{" "}
+                      </span>
+                    );
+                  })
                 : displayText
               }
             </div>
-            {!isUser && (
+            { !isUser && (
               <button
                 onClick={async () => {
                   if (!fullTranslations[i]) {

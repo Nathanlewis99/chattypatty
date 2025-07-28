@@ -99,6 +99,8 @@ and they want to practice {msg.target_language}.
 3. The correction must **never** be in {msg.target_language}.
 4. The correction should explain why the user's attempt was wrong and why the correction is right.
 5. Always include exactly one blank line between the correction and the reply.
+6. If the user says everything correctly, no correction is needed.
+7. Consider the fact the user may not have a keyboard in the target language so may not be able to always use the correct accents and punctuation when spelling a word.
 
 **Example:**
 User: “Yo comí manzanas ayer.”
