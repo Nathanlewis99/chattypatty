@@ -1,22 +1,23 @@
 // frontend/app/components/ChatInput.jsx
 "use client";
 
-import { useState, useRef } from "react";
+import { useRef } from "react";
 import { MicrophoneIcon } from "@heroicons/react/24/outline";
 
 export default function ChatInput({
+  value,
+  onChange,    // new!
   onSend,
   onVoice,
   placeholder = "Type your message…",
 }) {
-  const [value, setValue] = useState("");
-  const textareaRef      = useRef(null);
+  const textareaRef = useRef(null);
 
   const handleSend = () => {
     const text = value.trim();
     if (!text) return;
     onSend(text);
-    setValue("");
+    onChange("");         // clear after send
     textareaRef.current?.focus();
   };
 
@@ -33,7 +34,7 @@ export default function ChatInput({
         ref={textareaRef}
         rows={2}
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className="
@@ -47,7 +48,6 @@ export default function ChatInput({
         "
       />
 
-      {/* existing mic button, to the right of the textarea */}
       <button
         onClick={onVoice}
         className="p-2 hover:bg-gray-700 rounded"

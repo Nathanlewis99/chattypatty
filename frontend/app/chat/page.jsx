@@ -5,15 +5,18 @@ export const fetchCache = "force-no-store";
 
 import { useContext, useEffect, useState } from "react";
 import { useRouter }                        from "next/navigation";
+import { QuestionMarkCircleIcon }           from "@heroicons/react/24/solid";
 
 import { AuthContext }      from "../auth/AuthContext";
 import { useConversations } from "../ConversationContext";
 
-import Header       from "../components/Header";
-import Sidebar      from "../components/Sidebar";
-import ChatWindow   from "../components/ChatWindow";
-import ChatInput    from "../components/ChatInput";
-import VoiceOverlay from "../components/VoiceOverlay";
+import Header         from "../components/Header";
+import Sidebar        from "../components/Sidebar";
+import SidebarHandle  from "../components/SidebarHandle";
+import ChatWindow     from "../components/ChatWindow";
+import ChatInput      from "../components/ChatInput";
+import VocabHelper    from "../components/VocabHelper";
+import VoiceOverlay   from "../components/VoiceOverlay";
 
 export default function ChatPage() {
   const { token } = useContext(AuthContext);
@@ -40,19 +43,23 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   // voice overlay open/close
   const [voiceOpen, setVoiceOpen]     = useState(false);
+  // vocab helper toggle
+  const [showVocab, setShowVocab]     = useState(false);
+  // controlled input value
+  const [inputValue, setInputValue]   = useState("");
 
   useEffect(() => {
     if (!token) router.replace("/login");
   }, [token, router]);
 
-  // human‐readable target label
+  // human‑readable target label
   const targetLabel =
     languages.find((l) => l.value === targetLanguage)?.label ||
     targetLanguage;
 
   /**
-   * Make sure we have a conversation to send into—if none, create one;
-   * if one already exists, re‑select it so ChatWindow/sidebar both load it.
+   * Ensure there's a conversation before sending voice or text.
+   * Creates/selects as needed.
    */
   const ensureConversation = async () => {
     if (!activeId) {
@@ -68,7 +75,6 @@ export default function ChatPage() {
   const handleAssistantTurn = (assistantText, convId) => {
     const now = new Date().toISOString();
 
-    // 1) update ChatWindow if this is the active conversation
     if (convId === activeId) {
       setMessages((m) => [
         ...m,
@@ -76,7 +82,6 @@ export default function ChatPage() {
       ]);
     }
 
-    // 2) persist in your raw conversations list
     setConversationsRaw((prev) =>
       prev.map((c) =>
         c.id === convId
@@ -92,11 +97,10 @@ export default function ChatPage() {
     );
   };
 
-  /** NEW: called whenever the user speaks in VoiceOverlay */
+  /** Called whenever the user speaks in VoiceOverlay */
   const handleUserSpeak = (userText, convId) => {
     const now = new Date().toISOString();
 
-    // 1) update ChatWindow if this is the active conversation
     if (convId === activeId) {
       setMessages((m) => [
         ...m,
@@ -104,7 +108,6 @@ export default function ChatPage() {
       ]);
     }
 
-    // 2) persist in your raw conversations list
     setConversationsRaw((prev) =>
       prev.map((c) =>
         c.id === convId
@@ -120,10 +123,22 @@ export default function ChatPage() {
     );
   };
 
+  /** Send text from ChatInput */
+  const handleSendText = (text) => {
+    sendMessage(text);
+    setInputValue("");
+  };
+
   return (
     <div className="relative h-screen bg-gray-900 text-white overflow-hidden">
       {/* Header */}
       <Header onToggleSidebar={() => setSidebarOpen((s) => !s)} />
+
+      {/* Sidebar toggle handle */}
+      <SidebarHandle
+        open={sidebarOpen}
+        onToggle={() => setSidebarOpen((s) => !s)}
+      />
 
       {/* Sidebar */}
       <aside
@@ -142,25 +157,11 @@ export default function ChatPage() {
         />
       </aside>
 
-      {/* Sidebar handle */}
-      <button
-        aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-        onClick={() => setSidebarOpen((s) => !s)}
-        className={`
-          hidden md:flex fixed top-1/2 -translate-y-1/2 z-50
-          h-12 w-4 items-center justify-center bg-gray-700 hover:bg-gray-600 text-white rounded-r
-          transition-colors duration-150
-          ${sidebarOpen ? "left-64" : "left-0"}
-        `}
-      >
-        {sidebarOpen ? "«" : "»"}
-      </button>
-
       {/* Main content */}
       <main
         className={`
           absolute top-0 right-0 bottom-0 pt-24 flex flex-col transition-all duration-200 ease-in-out overflow-hidden
-          ${sidebarOpen ? "md:left-64 left-0" : "md:left-0 left-0"} bg-gray-900 z-10
+          ${sidebarOpen ? "md:left-64 left-0" : "left-0"} bg-gray-900 z-10
         `}
       >
         {/* Chat window */}
@@ -168,16 +169,43 @@ export default function ChatPage() {
           <ChatWindow messages={messages} />
         </div>
 
-        {/* Text input (hidden when voice overlay is up) */}
+        {/* Input area (hidden when voice overlay is up) */}
         {!voiceOpen && (
-          <div className="border-t border-gray-700 p-4 bg-gray-800 flex items-center">
-            <div className="flex-1">
-              <ChatInput
-                onSend={sendMessage}
-                onVoice={() => setVoiceOpen(true)}
-                placeholder={`Type in ${targetLabel}…`}
-              />
-            </div>
+          <div className="border-t border-gray-700 bg-gray-800 p-4 space-y-2">
+            {/* Vocab toggle */}
+            <button
+              onClick={() => setShowVocab((v) => !v)}
+              className="flex items-center space-x-1 text-sm text-gray-200 hover:text-gray-100 underline cursor-pointer"
+            >
+              <span>Vocab Assistant</span>
+              <span className="bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
+                <QuestionMarkCircleIcon className="w-4 h-4" />
+              </span>
+            </button>
+
+            {/* Helper panel */}
+            {showVocab && (
+              <div className="mb-2">
+                <VocabHelper
+                  native={nativeLanguage}
+                  target={targetLanguage}
+                  onInsert={(word) =>
+                    setInputValue((prev) =>
+                      prev ? `${prev} ${word}` : word
+                    )
+                  }
+                />
+              </div>
+            )}
+
+            {/* ChatInput */}
+            <ChatInput
+              value={inputValue}
+              onChange={setInputValue}
+              onSend={handleSendText}
+              onVoice={() => setVoiceOpen(true)}
+              placeholder={`Type in ${targetLabel}…`}
+            />
           </div>
         )}
       </main>

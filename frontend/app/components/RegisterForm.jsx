@@ -29,18 +29,33 @@ export default function RegisterForm() {
 
     setLoading(true);
     try {
+      // call your AuthContext.register, which POSTs to /auth/users
       await register({
         full_name: fullName,
         email,
         password,
         recaptcha_token: token,
       });
+
+      // show success message
       setSuccess(true);
+
+      // reset reCAPTCHA for next time
       recaptchaRef.current?.reset();
       setToken("");
-      setTimeout(() => router.push("/login"), 1500);
+
+      // after a moment, redirect to your verify‑sent page
+      setTimeout(() => {
+        router.push(
+          `/auth/verify-sent?email=${encodeURIComponent(email)}`
+        );
+      }, 1500);
     } catch (err) {
-      setError("Registration failed. Maybe that email is taken or reCAPTCHA failed?");
+      console.error(err);
+      setError(
+        err.response?.data?.detail ||
+        "Registration failed. Perhaps that email is taken or reCAPTCHA failed?"
+      );
     } finally {
       setLoading(false);
     }
@@ -55,7 +70,7 @@ export default function RegisterForm() {
       )}
       {success && (
         <div className="text-green-400 bg-green-900 p-2 rounded">
-          Registration successful! Redirecting…
+          Verification email sent! Redirecting…
         </div>
       )}
 
@@ -68,13 +83,8 @@ export default function RegisterForm() {
           placeholder="Jane Doe"
           required
           className="
-            w-full
-            bg-gray-700
-            border border-gray-600
-            text-white
-            placeholder-gray-400
-            p-3
-            rounded
+            w-full bg-gray-700 border border-gray-600
+            text-white placeholder-gray-400 p-3 rounded
             focus:outline-none focus:ring-2 focus:ring-blue-500
           "
         />
@@ -89,13 +99,8 @@ export default function RegisterForm() {
           placeholder="you@example.com"
           required
           className="
-            w-full
-            bg-gray-700
-            border border-gray-600
-            text-white
-            placeholder-gray-400
-            p-3
-            rounded
+            w-full bg-gray-700 border border-gray-600
+            text-white placeholder-gray-400 p-3 rounded
             focus:outline-none focus:ring-2 focus:ring-blue-500
           "
         />
@@ -110,13 +115,8 @@ export default function RegisterForm() {
           placeholder="••••••••"
           required
           className="
-            w-full
-            bg-gray-700
-            border border-gray-600
-            text-white
-            placeholder-gray-400
-            p-3
-            rounded
+            w-full bg-gray-700 border border-gray-600
+            text-white placeholder-gray-400 p-3 rounded
             focus:outline-none focus:ring-2 focus:ring-blue-500
           "
         />
@@ -135,13 +135,8 @@ export default function RegisterForm() {
         type="submit"
         disabled={loading}
         className={`
-          w-full
-          ${loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"}
-          text-white
-          font-medium
-          py-3
-          rounded
-          transition
+          w-full ${loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"}
+          text-white font-medium py-3 rounded transition
         `}
       >
         {loading ? "Creating…" : "Create Account"}

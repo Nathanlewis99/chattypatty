@@ -74,13 +74,6 @@ export default function Sidebar() {
         >
           {isCreating ? "Loading…" : "+ New Conversation"}
         </button>
-
-        {/* Vocab Helper */}
-        <VocabHelper
-          native={nativeLanguage}
-          target={targetLanguage}
-          onInsert={(txt) => setBuffer(txt)}
-        />
       </div>
 
       <hr className="border-gray-700" />
