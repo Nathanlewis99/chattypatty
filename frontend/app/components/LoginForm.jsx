@@ -1,4 +1,3 @@
-// frontend/app/components/LoginForm.jsx
 "use client";
 
 import { useState, useRef, useContext } from "react";

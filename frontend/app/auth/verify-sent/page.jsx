@@ -1,4 +1,3 @@
-// app/auth/verify‑sent/page.jsx
 "use client";
 
 import { useState } from "react";
@@ -7,9 +6,10 @@ import axios from "axios";
 import Link from "next/link";
 
 export default function VerifySentPage() {
-  const params = useSearchParams();
-  const email = params.get("email") || "";
-  const [status, setStatus] = useState("");
+  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const params  = useSearchParams();
+  const email   = params.get("email") || "";
+  const [status, setStatus]   = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleResend = async () => {
@@ -17,7 +17,7 @@ export default function VerifySentPage() {
     setStatus("");
     try {
       await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/users/verify/send`,
+        `${BACKEND}/auth/verify/resend`,
         { email },
         { headers: { "Content-Type": "application/json" } }
       );
@@ -41,7 +41,7 @@ export default function VerifySentPage() {
         </p>
 
         <div>
-          <span>Not received?{" "}</span>
+          <span>Not received?{" "}</span>
           <button
             onClick={handleResend}
             disabled={loading}
@@ -51,16 +51,12 @@ export default function VerifySentPage() {
           </button>
         </div>
 
-        {status && (
-          <p className="text-sm text-green-400">{status}</p>
-        )}
+        {status && <p className="text-sm text-green-400">{status}</p>}
 
         <p className="pt-4 text-sm">
           Once you have verified your email,{" "}
-          <Link href="/auth/login">
-            <a className="text-blue-400 hover:underline">
-              you can log in
-            </a>
+          <Link href="/login">
+            <a className="text-blue-400 hover:underline">you can log in</a>
           </Link>.
         </p>
       </div>
