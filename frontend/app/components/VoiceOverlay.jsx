@@ -1,8 +1,7 @@
 // frontend/app/components/VoiceOverlay.jsx
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import { useContext } from "react";
+import { useEffect, useRef, useState, useCallback, useContext } from "react";
 import { AuthContext } from "../auth/AuthContext";
 import axios from "axios";
 
@@ -16,7 +15,6 @@ export default function VoiceOverlay({
   scenarioPrompt,
 }) {
   const { token } = useContext(AuthContext);
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const recognitionRef = useRef(null);
   const convIdRef = useRef(null);
@@ -26,26 +24,16 @@ export default function VoiceOverlay({
   const [error, setError] = useState(null);
   const [transcriptHistory, setTranscriptHistory] = useState([]);
 
-  /**
-   * Handles one utterance cycle:
-   * 1) Abort recognition
-   * 2) Ensure conversation
-   * 3) Call voice-turn & update UI
-   * 4) Call TTS & play
-   * 5) Restart recognition
-   */
+  // One utterance cycle
   const processVoiceTurn = useCallback(
     async (text) => {
       const rec = recognitionRef.current;
       isProcessingRef.current = true;
 
       // record user turn
-      setTranscriptHistory((h) => [
-        ...h,
-        { speaker: "You", text },
-      ]);
+      setTranscriptHistory((h) => [...h, { speaker: "You", text }]);
 
-      // 1) Abort recognition
+      // 1) Abort recognition while we process
       try { rec.abort(); } catch {}
       setListening(false);
 
@@ -61,11 +49,11 @@ export default function VoiceOverlay({
         return;
       }
 
-      // 3) Voice turn
+      // 3) Voice turn -> backend
       let assistantText = "";
       try {
         const { data: vt } = await axios.post(
-          `${BACKEND}/voice-turn`,
+          "/voice-turn",
           {
             text,
             native_language: nativeLanguage,
@@ -86,10 +74,7 @@ export default function VoiceOverlay({
       }
 
       // record assistant turn
-      setTranscriptHistory((h) => [
-        ...h,
-        { speaker: "Patty", text: assistantText },
-      ]);
+      setTranscriptHistory((h) => [...h, { speaker: "Patty", text: assistantText }]);
 
       // Update main UI
       try {
@@ -101,7 +86,7 @@ export default function VoiceOverlay({
       // 4) TTS playback
       try {
         const { data: ttsBytes } = await axios.post(
-          `${BACKEND}/tts`,
+          "/tts",
           { text: assistantText },
           {
             headers: { Authorization: `Bearer ${token}` },
@@ -128,7 +113,6 @@ export default function VoiceOverlay({
       }
     },
     [
-      BACKEND,
       ensureConversation,
       nativeLanguage,
       onNewAssistantTurn,
@@ -156,7 +140,7 @@ export default function VoiceOverlay({
         ? "es-ES"
         : targetLanguage === "en"
         ? "en-US"
-        : `${targetLanguage}-${targetLanguage.toUpperCase()}`;
+        : `${targetLanguage}-${targetLanguage?.toUpperCase?.() || ""}`;
 
     rec.onstart = () => setListening(true);
     rec.onerror = (e) => {
@@ -168,7 +152,6 @@ export default function VoiceOverlay({
     };
     rec.onend = () => {
       setListening(false);
-      // If not processing, restart automatically
       if (!isProcessingRef.current && open) {
         try { rec.start(); setListening(true); } catch {}
       }
@@ -186,7 +169,7 @@ export default function VoiceOverlay({
       rec.onerror = null;
       rec.onend = null;
       rec.onresult = null;
-      rec.stop();
+      try { rec.stop(); } catch {}
     };
   }, [open, targetLanguage, processVoiceTurn]);
 
@@ -225,9 +208,7 @@ export default function VoiceOverlay({
         {transcriptHistory.map((turn, idx) => (
           <p
             key={idx}
-            className={`mb-2 ${
-              turn.speaker === "You" ? "text-blue-300" : "text-pink-300"
-            }`}
+            className={`mb-2 ${turn.speaker === "You" ? "text-blue-300" : "text-pink-300"}`}
           >
             <span className="font-semibold">{turn.speaker}:</span> {turn.text}
           </p>

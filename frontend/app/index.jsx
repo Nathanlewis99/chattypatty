@@ -6,7 +6,7 @@ export default function Home() {
     const [chat, setChat] = useState([])
 
     const send = async () => {
-        const { data } = await axios.post('/api/chat', {text})
+        const { data } = await axios.post('/chat', {text})
         setChat(prev => [...prev, {from: 'bot', text: data.reply}])
     }
 }

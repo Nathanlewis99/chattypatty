@@ -15,7 +15,6 @@ const ConversationContext = createContext(null);
 
 export function ConversationProvider({ children }) {
   const { token } = useContext(AuthContext);
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   // — raw data + language options
   const [conversationsRaw, setConversationsRaw] = useState([]);
@@ -46,7 +45,7 @@ export function ConversationProvider({ children }) {
   useEffect(() => {
     if (!token) return;
     axios
-      .get(`${BACKEND}/conversations`, {
+      .get(`/conversations`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then(({ data }) => setConversationsRaw(data))
@@ -57,7 +56,7 @@ export function ConversationProvider({ children }) {
   useEffect(() => {
     if (!token) return;
     axios
-      .get(`${BACKEND}/languages?target=en`, {
+      .get(`/languages?target=en`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then(({ data }) =>
@@ -94,7 +93,7 @@ export function ConversationProvider({ children }) {
   const selectConversation = async (id) => {
     try {
       const { data: conv } = await axios.get(
-        `${BACKEND}/conversations/${id}`,
+        `/conversations/${id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setActiveId(conv.id);
@@ -119,7 +118,7 @@ export function ConversationProvider({ children }) {
       }
 
       const { data: conv } = await axios.post(
-        `${BACKEND}/conversations`,
+        `/conversations`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -138,7 +137,7 @@ export function ConversationProvider({ children }) {
   // 6️⃣ delete a conversation
   const deleteConversation = async (id) => {
     try {
-      await axios.delete(`${BACKEND}/conversations/${id}`, {
+      await axios.delete(`/conversations/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setConversationsRaw((prev) => prev.filter((c) => c.id !== id));
@@ -184,7 +183,7 @@ export function ConversationProvider({ children }) {
     setMessages((m) => [...m, { from: "bot", text: "", streaming: true }]);
 
     try {
-      const res = await fetch(`${BACKEND}/chat`, {
+      const res = await fetch(`/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

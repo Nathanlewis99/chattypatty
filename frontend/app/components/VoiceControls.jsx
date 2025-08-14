@@ -15,8 +15,6 @@ export default function VoiceControls() {
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
 
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
-
   const start = async () => {
     if (recording) return;
     chunksRef.current = [];
@@ -35,7 +33,7 @@ export default function VoiceControls() {
         const form = new FormData();
         form.append("file", blob, "audio.webm");
 
-        const res = await fetch(`${BACKEND}/stt`, {
+        const res = await fetch(`/stt`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,

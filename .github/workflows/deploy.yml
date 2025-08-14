@@ -1,0 +1,81 @@
+name: Deploy to AWS (ECR + ASG refresh)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write      # required for OIDC
+  contents: read
+
+env:
+  AWS_REGION: eu-west-2
+  ACCOUNT_ID: "058264204819"
+  BACKEND_REPO: chattypatty-backend
+  FRONTEND_REPO: chattypatty-frontend
+  ASG_NAME: chattypatty-ASG
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 1) Assume AWS role via OIDC
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.ACCOUNT_ID }}:role/GithubDeployRole   # <-- replace with your role ARN
+          aws-region: ${{ env.AWS_REGION }}
+
+      # 2) Compute the ECR registry URL
+      - name: Set REGISTRY env
+        run: echo "REGISTRY=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com" >> $GITHUB_ENV
+
+      # 3) Ensure ECR repos exist (idempotent)
+      - name: Ensure ECR repositories
+        run: |
+          set -e
+          aws ecr describe-repositories --repository-names "${BACKEND_REPO}" >/dev/null 2>&1 || \
+            aws ecr create-repository --repository-name "${BACKEND_REPO}"
+          aws ecr describe-repositories --repository-names "${FRONTEND_REPO}" >/dev/null 2>&1 || \
+            aws ecr create-repository --repository-name "${FRONTEND_REPO}"
+
+      # 4) Login to ECR for docker pushes
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 5) Build & push BACKEND image (prod Dockerfile)
+      - name: Build & push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.BACKEND_REPO }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.BACKEND_REPO }}:latest
+
+      # 6) Build & push FRONTEND image (NGINX-based prod Dockerfile)
+      #    If your Next.js build needs a public URL at build time, add build-args here.
+      - name: Build & push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: frontend/Dockerfile
+          push: true
+          # Example if you need a build arg:
+          # build-args: |
+          #   NEXT_PUBLIC_BACKEND_URL=https://your-domain.com
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.FRONTEND_REPO }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.FRONTEND_REPO }}:latest
+
+      # 7) Roll out by refreshing the ASG (instances re-launch, pull :latest, come up healthy)
+      - name: Start ASG Instance Refresh
+        run: |
+          aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name "${ASG_NAME}" \
+            --preferences MinHealthyPercentage=100,InstanceWarmup=60

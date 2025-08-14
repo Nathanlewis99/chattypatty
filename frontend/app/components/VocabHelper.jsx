@@ -4,8 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 
 export default function VocabHelper({ native, target, onInsert }) {
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
-
   const [srcText, setSrcText] = useState("");
   const [translated, setTranslated] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,14 +25,11 @@ export default function VocabHelper({ native, target, onInsert }) {
 
     debounceRef.current = setTimeout(async () => {
       try {
-        const { data } = await axios.post(
-          `${BACKEND}/languages/translate`,
-          {
-            text: srcText,
-            source: native,   // <-- move into body
-            target: target,   // <-- move into body
-          }
-        );
+        const { data } = await axios.post("/languages/translate", {
+          text: srcText,
+          source: native,
+          target: target,
+        });
         setTranslated(data.translation || "");
       } catch (e) {
         console.error(e);
@@ -46,7 +41,7 @@ export default function VocabHelper({ native, target, onInsert }) {
     }, 300);
 
     return () => clearTimeout(debounceRef.current);
-  }, [srcText, native, target, BACKEND]);
+  }, [srcText, native, target]);
 
   const handleInsert = () => {
     if (!translated) return;
@@ -60,14 +55,14 @@ export default function VocabHelper({ native, target, onInsert }) {
       <input
         value={srcText}
         onChange={(e) => setSrcText(e.target.value)}
-        placeholder={`Type a word/phrase in ${native.toUpperCase()}…`}
+        placeholder={`Type a word/phrase in ${native?.toUpperCase?.() || "source"}…`}
         className="w-full bg-gray-700 text-white text-sm px-2 py-1 rounded outline-none focus:ring"
       />
 
       <textarea
         readOnly
         value={loading ? "…" : translated}
-        placeholder={`Translation in ${target.toUpperCase()}…`}
+        placeholder={`Translation in ${target?.toUpperCase?.() || "target"}…`}
         className="w-full bg-gray-700 text-white text-sm px-2 py-1 rounded h-16 resize-none"
       />
 

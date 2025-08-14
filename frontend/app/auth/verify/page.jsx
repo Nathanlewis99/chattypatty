@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 
 export default function VerifyPage() {
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
   const router = useRouter();
   const params = useSearchParams();
   const token  = params.get("token");
@@ -18,7 +17,7 @@ export default function VerifyPage() {
     }
 
     axios
-      .get(`${BACKEND}/auth/verify`, { params: { token } })
+      .get(`/auth/verify`, { params: { token } })
       .then(() => {
         setStatus("success");
         setTimeout(() => router.push("/login"), 2000);

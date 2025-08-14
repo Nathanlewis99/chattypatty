@@ -11,10 +11,8 @@ export default function LandingPage() {
   const { token } = useContext(AuthContext);
   const [languages, setLanguages] = useState([]);
 
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
-
   useEffect(() => {
-    fetch(`${BACKEND}/languages?target=en`)
+    fetch(`/languages?target=en`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load languages");
         return res.json();
@@ -30,7 +28,7 @@ export default function LandingPage() {
       .catch((err) => {
         console.error("Error fetching languages:", err);
       });
-  }, [BACKEND]);
+  }, []);
 
   return (
     <div className="mt-24 min-h-screen bg-gray-900 text-white flex flex-col">

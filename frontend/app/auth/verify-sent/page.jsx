@@ -6,7 +6,6 @@ import axios from "axios";
 import Link from "next/link";
 
 export default function VerifySentPage() {
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
   const params  = useSearchParams();
   const email   = params.get("email") || "";
   const [status, setStatus]   = useState("");
@@ -17,7 +16,7 @@ export default function VerifySentPage() {
     setStatus("");
     try {
       await axios.post(
-        `${BACKEND}/auth/verify/resend`,
+        `/auth/verify/resend`,
         { email },
         { headers: { "Content-Type": "application/json" } }
       );

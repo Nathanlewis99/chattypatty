@@ -5,7 +5,6 @@ import axios from "axios";
 import ReCAPTCHA from "react-google-recaptcha";
 
 export default function RegisterForm({ onSuccess }) {
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const [fullName, setFullName]         = useState("");
   const [email, setEmail]               = useState("");
@@ -35,7 +34,7 @@ export default function RegisterForm({ onSuccess }) {
     setLoading(true);
     try {
       await axios.post(
-        `${BACKEND}/auth/register`,
+        `/auth/register`,
         {
           full_name: fullName,
           email,

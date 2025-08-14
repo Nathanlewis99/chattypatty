@@ -8,7 +8,6 @@ import { useConversations } from "../ConversationContext";
 export default function ChatWindow({ messages }) {
   const bottomRef = useRef(null);
   const { nativeLanguage, targetLanguage } = useConversations();
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   // cache for full‑message translations:
   const [fullTranslations, setFullTranslations] = useState({});
@@ -30,7 +29,7 @@ export default function ChatWindow({ messages }) {
     if (fullTranslations[idx]) return;
     try {
       const res = await axios.post(
-        `${BACKEND}/languages/translate`,
+        `/languages/translate`,
         {
           text,
           source: targetLanguage,
@@ -48,7 +47,7 @@ export default function ChatWindow({ messages }) {
     if (wordCache[word]) return;
     try {
       const res = await axios.post(
-        `${BACKEND}/languages/translate`,
+        `/languages/translate`,
         {
           text: word,
           source: targetLanguage,
