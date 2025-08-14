@@ -6,6 +6,8 @@ Conversational AI language buddy which gives guidance and correction to aid the 
 Can be run locally using docker. You will first need to generate a few API keys:
 - OpenAI API
 - Google Translate API
+- ElevenLabs API Key
+- For local deployment you can use basic reCaptcha credentials for testing purposes
 
 - Ensure you are in the root folder (/chattypatty)
 - Add an env file, configuring the following variables:
