@@ -27,7 +27,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ env.ACCOUNT_ID }}:role/GithubDeployRole   # <-- replace with your role ARN
+          role-to-assume: arn:aws:iam::${{ env.ACCOUNT_ID }}:role/GithubDeploy
           aws-region: ${{ env.AWS_REGION }}
 
       # 2) Compute the ECR registry URL
