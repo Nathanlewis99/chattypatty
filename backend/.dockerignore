@@ -1,0 +1,25 @@
+# git & vcs
+.git
+.gitignore
+
+# python caches / envs
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# tooling / editors / coverage
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.idea/
+.vscode/
+
+# local data & secrets
+data/
+.env
+.env.*

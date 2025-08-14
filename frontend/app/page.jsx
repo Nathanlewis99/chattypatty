@@ -38,7 +38,6 @@ export default function LandingPage() {
       <header className="flex-1 flex flex-col items-center justify-center px-4 text-center space-y-6">
         <div className="flex items-center">
           <Link href="/">
-            <a>
               <Image
                 src="/ChattyPattyLogo.png"
                 alt="ChattyPatty Logo"
@@ -47,7 +46,6 @@ export default function LandingPage() {
                 className="object-contain"
                 priority
               />
-            </a>
           </Link>
         </div>
 

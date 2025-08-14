@@ -16,15 +16,12 @@ export default function Header({ onToggleSidebar }) {
 
   useEffect(() => {
     function handleClick(e) {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setOpen(false);
-      }
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  // Only apply right padding on routes other than /chat
   const rightPaddingClass = pathname === "/chat" ? "" : "md:pr-64";
 
   return (
@@ -46,34 +43,32 @@ export default function Header({ onToggleSidebar }) {
       </button>
 
       {/* Logo */}
-      <Link href="/">
-        <a className="flex items-center">
-          <Image
-            src="/ChattyPattyLogo.png"
-            alt="ChattyPatty Logo"
-            width={100}
-            height={100}
-            className="object-contain h-20 w-20 sm:h-24 sm:w-24 cursor-pointer"
-            priority
-          />
-        </a>
+      <Link href="/" className="flex items-center">
+        <Image
+          src="/ChattyPattyLogo.png"
+          alt="ChattyPatty Logo"
+          width={100}
+          height={100}
+          className="object-contain h-20 w-20 sm:h-24 sm:w-24 cursor-pointer"
+          priority
+        />
       </Link>
 
       {/* Centered Chat button on landing page */}
       {pathname === "/" && token && (
         <div className="absolute left-1/2 transform -translate-x-1/2">
-          <Link href="/chat">
-            <button
-              className="
-                px-6 py-2
-                animated-gradient
-                text-white font-medium rounded
-                hover:scale-105 transform transition
-                cursor-pointer
-              "
-            >
-              Chat
-            </button>
+          <Link
+            href="/chat"
+            className="
+              px-6 py-2
+              animated-gradient
+              text-white font-medium rounded
+              hover:scale-105 transform transition
+              cursor-pointer inline-block
+            "
+            onClick={() => setOpen(false)}
+          >
+            Chat
           </Link>
         </div>
       )}
@@ -115,21 +110,19 @@ export default function Header({ onToggleSidebar }) {
               </>
             ) : (
               <>
-                <Link href="/login">
-                  <a
-                    onClick={() => setOpen(false)}
-                    className="block px-4 py-2 hover:bg-gray-800"
-                  >
-                    Log In
-                  </a>
+                <Link
+                  href="/login"
+                  className="block px-4 py-2 hover:bg-gray-800"
+                  onClick={() => setOpen(false)}
+                >
+                  Log In
                 </Link>
-                <Link href="/register">
-                  <a
-                    onClick={() => setOpen(false)}
-                    className="block px-4 py-2 hover:bg-gray-800"
-                  >
-                    Sign Up
-                  </a>
+                <Link
+                  href="/register"
+                  className="block px-4 py-2 hover:bg-gray-800"
+                  onClick={() => setOpen(false)}
+                >
+                  Sign Up
                 </Link>
               </>
             )}

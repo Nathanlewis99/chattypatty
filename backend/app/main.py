@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import chat, languages, conversations, stt, tts, voice_turn, auth
+from .routers import chat, languages, conversations, stt, tts, voice_turn, auth, health
 from .users import (
     auth_router,
     reset_router,
@@ -22,6 +22,9 @@ app.add_middleware(
 app.include_router(languages.router)
 app.include_router(conversations.router)
 app.include_router(chat.router)
+
+# health router
+app.include_router(health.router)
 
 # custom register/verify
 app.include_router(auth.router)
