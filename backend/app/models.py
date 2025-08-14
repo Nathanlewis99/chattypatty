@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, ForeignKey, DateTime, Text
+from sqlalchemy import Column, String, ForeignKey, DateTime, Text, Boolean
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -15,6 +15,8 @@ class UserTable(SQLAlchemyBaseUserTableUUID, Base):
     """
     __tablename__ = "user"
     full_name = Column(String, nullable=True)
+    is_active    = Column(Boolean, nullable=False, default=False)
+    is_verified  = Column(Boolean, nullable=False, default=False)
 
     conversations = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")
 

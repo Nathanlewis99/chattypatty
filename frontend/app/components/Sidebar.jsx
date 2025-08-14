@@ -70,17 +70,10 @@ export default function Sidebar() {
           disabled={isCreating}
           className={`w-full ${
             isCreating ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
-          } text-white py-2 rounded flex items-center justify-center`}
+          } text-white py-2 rounded flex items-center justify-center cursor-pointer`}
         >
           {isCreating ? "Loading…" : "+ New Conversation"}
         </button>
-
-        {/* Vocab Helper */}
-        <VocabHelper
-          native={nativeLanguage}
-          target={targetLanguage}
-          onInsert={(txt) => setBuffer(txt)}
-        />
       </div>
 
       <hr className="border-gray-700" />

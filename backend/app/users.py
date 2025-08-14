@@ -28,13 +28,6 @@ class UserManager(UUIDIDMixin, BaseUserManager[UserTable, UUID]):
     reset_password_token_secret = SECRET
     verification_token_secret   = SECRET
 
-    async def on_after_register(
-        self,
-        user: UserTable,
-        request: Optional[Request] = None
-    ):
-        print(f"New user registered: {user.id}")
-
 
 async def get_user_manager(
     user_db=Depends(get_user_db),
@@ -64,12 +57,7 @@ fastapi_users = FastAPIUsers[UserTable, UUID](
 )
 
 auth_router     = fastapi_users.get_auth_router(auth_backend)
-register_router = fastapi_users.get_register_router(
-    UserRead,
-    UserCreate,
-)
 reset_router    = fastapi_users.get_reset_password_router()
-verify_router   = fastapi_users.get_verify_router(UserRead)
 users_router    = fastapi_users.get_users_router(
     UserRead,
     UserUpdate,

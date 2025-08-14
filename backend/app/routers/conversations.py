@@ -33,13 +33,12 @@ async def create_conversation(
     user: UserRead = Depends(fastapi_users.current_user()),
 ):
     """ Start a new conversation, optionally seed it with an initial OpenAI response. """
-
     # 1) create the conversation record
     conv = Conversation(
         user_id=user.id,
         source_language=payload.source_language,
         target_language=payload.target_language,
-        prompt=payload.prompt,  # save the scenario prompt if provided
+        prompt=payload.prompt,
     )
     db.add(conv)
     await db.commit()
@@ -47,58 +46,51 @@ async def create_conversation(
 
     # 2) if the user supplied a prompt, fire off an assistant reply
     if payload.prompt:
-        # 2a) build the combined system prompt
         pieces: List[str] = []
-
-        # • first the user‐supplied scenario prompt
         pieces.append(f"Context: {payload.prompt.strip()}")
-
-        # • then the default tutor instructions
         tutor_prompt = f"""
 You are a friendly {payload.target_language} tutor.  
 The user’s native language is {payload.source_language},  
-and they want to practice {payload.target_language}.  
+and they want to practice {payload.target_language}.
 
-**Rules:**  
-1. Only ever use {payload.target_language} in your conversation—unless you are correcting a mistake.  
-2. When you correct, **first** present the correction _in {payload.source_language}_, with a heading "Correction",  
-   then leave a blank line, then continue your reply _in {payload.target_language}_ 
-   with a heading "Conversational response".  
-3. The correction must **never** be in {payload.target_language}.  
-4. The correction should explain the reason what they said was incorrect, and why the correction is correct.
-5. Always include exactly one blank line between correction and reply.  
+**Rules:**
+1. Only ever use {payload.target_language} in your conversation—unless you are correcting a mistake.
+2. When you correct, **first** present the correction _in {payload.source_language}_, with a heading "Correction",
+   then leave a blank line, then continue your reply _in {payload.target_language}_
+   with a heading "Conversational response".
+3. The correction must **never** be in {payload.target_language}.
+4. The correction should explain why the user's attempt was wrong and why the correction is right.
+5. Always include exactly one blank line between correction and reply.
+6. If the user says everything correctly, no correction is needed.
+7. Consider the fact the user may not have a keyboard in the target language so may not be able to always use the correct accents and punctuation when spelling a word.
 
-**Example:**  
-User: “Yo comí manzanas ayer.”  
-Assistant:  
-“Correction (in {payload.source_language}):  
-It looks like you were trying to say ‘I ate apples yesterday.’  
-The correct way to say this in Spanish would be 'Ayer comí manzanas', because...  
 
-Conversational Response:  
-Cuéntame más sobre qué otras frutas te gustan.”
-—now continue the conversation based on this context.
+**Example:**
+User: “Yo comí manzanas ayer.”
+Assistant:
+“Correction (in {payload.source_language}):
+It looks like you were trying to say ‘I ate apples yesterday.’
+The correct Spanish is 'Ayer comí manzanas', because...”
+
+Conversational response:
+Cuéntame más sobre otras frutas que te gusten.
 """.strip()
-
         pieces.append(tutor_prompt)
 
         full_system = "\n\n".join(pieces)
-
-        # 2b) call OpenAI once, non‐streaming
         resp = client.chat.completions.create(
             model="gpt-4.1",
             messages=[{"role": "system", "content": full_system}],
             stream=False,
         )
         assistant_text = resp.choices[0].message.content or ""
-
-        # 2c) persist that reply as the first bot message
-        msg = Message(
-            conversation_id=conv.id,
-            sender="bot",
-            content=assistant_text.strip(),
+        db.add(
+            Message(
+                conversation_id=conv.id,
+                sender="bot",
+                content=assistant_text.strip(),
+            )
         )
-        db.add(msg)
         await db.commit()
 
     # 3) re‐load with messages eager-loaded
@@ -109,6 +101,9 @@ Cuéntame más sobre qué otras frutas te gustan.”
     )
     result = await db.execute(stmt)
     conv_with_msgs = result.scalar_one()
+
+    # sort messages chronologically
+    conv_with_msgs.messages.sort(key=lambda m: m.created_at)
     return conv_with_msgs
 
 
@@ -125,7 +120,13 @@ async def list_conversations(
         .order_by(Conversation.created_at)
     )
     result = await db.execute(stmt)
-    return result.scalars().all()
+    convs = result.scalars().all()
+
+    # sort each conversation's messages oldest→newest
+    for conv in convs:
+        conv.messages.sort(key=lambda m: m.created_at)
+
+    return convs
 
 
 @router.get("/{conversation_id}", response_model=ConversationRead)
@@ -145,6 +146,9 @@ async def get_conversation(
     conv = result.scalars().first()
     if not conv:
         raise HTTPException(status_code=404, detail="Not found")
+
+    # ensure chronological order
+    conv.messages.sort(key=lambda m: m.created_at)
     return conv
 
 
@@ -154,7 +158,7 @@ async def delete_conversation(
     db: AsyncSession = Depends(get_db),
     user: UserRead = Depends(fastapi_users.current_user())
 ):
-    """ Delete a conversation."""
+    """ Delete a conversation. """
     conv = await db.get(Conversation, conversation_id)
     if not conv or conv.user_id != user.id:
         raise HTTPException(status_code=404, detail="Not Found")

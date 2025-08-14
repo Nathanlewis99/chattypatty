@@ -3,12 +3,14 @@
 
 import { useState, useRef, useEffect, useContext } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import { AuthContext } from "../auth/AuthContext";
 
 export default function Header({ onToggleSidebar }) {
-  const { logout } = useContext(AuthContext);
+  const { token, logout } = useContext(AuthContext);
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -20,18 +22,18 @@ export default function Header({ onToggleSidebar }) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  const rightPaddingClass = pathname === "/chat" ? "" : "md:pr-64";
+
   return (
     <header
-      className="
-        fixed top-0 left-0 right-0
-        h-24 bg-gray-900
+      className={`
+        fixed top-0 left-0 right-0 h-24 bg-gray-900
         flex items-center justify-between
-        px-4 pl-20 md:pl-64
-        z-40
-        shadow-md
-      "
+        px-4 pl-20 md:pl-64 ${rightPaddingClass}
+        z-40 shadow-md
+      `}
     >
-      {/* optional burger on mobile to open sidebar */}
+      {/* Mobile sidebar toggle */}
       <button
         className="md:hidden mr-2 text-white p-2 rounded hover:bg-gray-800"
         onClick={onToggleSidebar}
@@ -40,53 +42,90 @@ export default function Header({ onToggleSidebar }) {
         ☰
       </button>
 
-      {/* left: logo */}
-      <div className="flex items-center">
+      {/* Logo */}
+      <Link href="/" className="flex items-center">
         <Image
           src="/ChattyPattyLogo.png"
           alt="ChattyPatty Logo"
           width={100}
           height={100}
-          className="object-contain h-20 w-20 sm:h-24 sm:w-24"
+          className="object-contain h-20 w-20 sm:h-24 sm:w-24 cursor-pointer"
           priority
         />
-      </div>
+      </Link>
 
-      {/* right: profile menu */}
+      {/* Centered Chat button on landing page */}
+      {pathname === "/" && token && (
+        <div className="absolute left-1/2 transform -translate-x-1/2">
+          <Link
+            href="/chat"
+            className="
+              px-6 py-2
+              animated-gradient
+              text-white font-medium rounded
+              hover:scale-105 transform transition
+              cursor-pointer inline-block
+            "
+            onClick={() => setOpen(false)}
+          >
+            Chat
+          </Link>
+        </div>
+      )}
+
+      {/* Profile / Auth menu */}
       <div className="relative" ref={ref}>
         <button
           onClick={() => setOpen((o) => !o)}
           className="p-2 rounded-full hover:bg-gray-800"
+          aria-label="Open menu"
         >
-          <svg
-            className="w-6 h-6 text-white"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z" />
           </svg>
         </button>
 
         {open && (
           <div className="absolute right-0 mt-2 w-48 bg-gray-900 text-white rounded shadow-lg overflow-hidden">
-            <button
-              onClick={() => {
-                setOpen(false);
-                logout();
-              }}
-              className="block w-full text-left px-4 py-2 hover:bg-gray-800"
-            >
-              Logout
-            </button>
-            <button
-              onClick={() => {
-                setOpen(false);
-                router.push("/reset-password");
-              }}
-              className="block w-full text-left px-4 py-2 hover:bg-gray-800"
-            >
-              Reset Password
-            </button>
+            {token ? (
+              <>
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    logout();
+                  }}
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-800"
+                >
+                  Logout
+                </button>
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    router.push("/reset-password");
+                  }}
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-800"
+                >
+                  Reset Password
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="block px-4 py-2 hover:bg-gray-800"
+                  onClick={() => setOpen(false)}
+                >
+                  Log In
+                </Link>
+                <Link
+                  href="/register"
+                  className="block px-4 py-2 hover:bg-gray-800"
+                  onClick={() => setOpen(false)}
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
           </div>
         )}
       </div>

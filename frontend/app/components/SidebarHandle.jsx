@@ -7,20 +7,19 @@ export default function SidebarHandle({ open, onToggle }) {
       aria-label="Toggle sidebar"
       onClick={onToggle}
       className={`
-        fixed top-1/2
-        -translate-y-1/2
-        z-30
+        fixed top-1/2 -translate-y-1/2
+        z-50                      /* <<< bump above sidebar’s z-40 */
         h-14 w-7
         flex items-center justify-center
         bg-gray-800 text-white
         shadow-xl rounded-r
         hover:bg-gray-700 transition
-        // position depends on open state + breakpoint
-        ${open ? "left-64 md:left-64" : "left-0 md:left-0"}
+        ${open ? "left-64" : "left-0"}  /* <<< no more md: prefix */
       `}
     >
-      {/* Arrow: when open show “<” (collapse), when closed show “>” (expand) */}
-      <span className="text-lg leading-none">{open ? "«" : "»"}</span>
+      <span className="text-lg leading-none">
+        {open ? "«" : "»"}
+      </span>
     </button>
   );
 }

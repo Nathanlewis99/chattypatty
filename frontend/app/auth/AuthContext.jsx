@@ -6,8 +6,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 
 // ————— GLOBAL 401 HANDLER —————
-// Runs as soon as this module is loaded (on the client).
-// Any axios response with status 401 will clear the token & do a hard redirect.
+// Any 401 from axios will clear the token & redirect to login.
 if (typeof window !== "undefined") {
   axios.interceptors.response.use(
     (res) => res,
@@ -34,7 +33,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [initialized, setInitialized] = useState(false);
 
-  // 1️⃣ On mount, re‑hydrate your token & set up axios default header
+  // 1️⃣ Re‑hydrate token on mount
   useEffect(() => {
     const t = localStorage.getItem("token");
     if (t) {
@@ -44,29 +43,50 @@ export function AuthProvider({ children }) {
     setInitialized(true);
   }, []);
 
-  // 2️⃣ Don’t render *any* children (and thus avoid any early axios calls)
-  //    until after we’ve finished that re‑hydration above.
-  if (!initialized) {
-    return null; // or a loading spinner if you prefer
-  }
+  // 2️⃣ Avoid rendering until we've re‑hydrated
+  if (!initialized) return null;
 
   // ———— auth actions ————
-  const login = async ({ email, password }) => {
+
+  // LOGIN
+  // Accepts { email, password, recaptcha_token }
+  const login = async ({ email, password, recaptcha_token }) => {
+    // We need form‑encoded so FastAPI sees it as form data
+    const params = new URLSearchParams({
+      username: email,
+      password,
+    });
+    // send the reCAPTCHA checkbox token under “token”
+    if (recaptcha_token) {
+      params.append("token", recaptcha_token);
+    }
+
     const res = await axios.post(
       `${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/jwt/login`,
-      new URLSearchParams({ username: email, password })
+      params
     );
     const t = res.data.access_token;
     localStorage.setItem("token", t);
     axios.defaults.headers.common.Authorization = `Bearer ${t}`;
     setToken(t);
-    router.replace("/");
+    router.replace("/chat");
   };
 
-  const register = async ({ email, password, full_name }) => {
+  // REGISTER
+  // Accepts { full_name, email, password, recaptcha_token }
+  const register = async ({ full_name, email, password, recaptcha_token }) => {
+    // JSON body is fine for register; our recaptcha verifier will pull from JSON
+    const payload = {
+      full_name,
+      email,
+      password,
+    };
+    if (recaptcha_token) {
+      payload.recaptcha_token = recaptcha_token;
+    }
     await axios.post(
       `${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/register`,
-      { email, password, full_name }
+      payload
     );
   };
 
